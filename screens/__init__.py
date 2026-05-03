@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Pantallas del SBE — diseño Figma, brigadas ambientales (verde)
 
 from screens import (
@@ -37,3 +38,44 @@ __all__ = [
     "screen_utilidades",
     "screen_brigade_select",
 ]
+=======
+# Pantallas del SBE — diseño Figma, brigadas ambientales (verde)
+
+from screens import (
+    screen_dashboard,
+    screen_brigades,
+    screen_brigadistas,
+    screen_shifts,
+    screen_reports,
+    screen_statistics,
+    screen_content,
+    screen_login,
+    screen_register,
+    screen_recovery,
+    screen_about,
+    screen_manual,
+    screen_legal,
+    screen_backup,
+    screen_utilidades,
+    screen_brigade_select,
+)
+
+__all__ = [
+    "screen_dashboard",
+    "screen_brigades",
+    "screen_brigadistas",
+    "screen_shifts",
+    "screen_reports",
+    "screen_statistics",
+    "screen_content",
+    "screen_login",
+    "screen_register",
+    "screen_recovery",
+    "screen_about",
+    "screen_manual",
+    "screen_legal",
+    "screen_backup",
+    "screen_utilidades",
+    "screen_brigade_select",
+]
+>>>>>>> 6cb1e103cc1d0d934c3f169517ceacc4cb355f96

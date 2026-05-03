@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 """
 CRUD de Usuario e Institucion para login y registro.
 """
@@ -920,3 +921,927 @@ def listar_brigadistas_visibles(brigada_id: int):
         return cursor.fetchall()
     finally:
         conn.close()
+=======
+"""
+CRUD de Usuario e Institucion para login y registro.
+"""
+import secrets
+import hashlib
+from datetime import datetime, timedelta
+from database.connection import get_connection
+from database.auth import hash_password, verificar_password
+
+
+def buscar_usuario_por_email(email: str):
+    """
+    Busca un usuario por email. Retorna el diccionario del usuario o None.
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            "SELECT idUsuario, nombre, apellido, email, contrasena, rol, Brigada_idBrigada FROM usuario WHERE email = %s",
+            (email.strip().lower(),),
+        )
+        return cursor.fetchone()
+    finally:
+        conn.close()
+
+
+def verificar_login(email: str, password: str):
+    """
+    Verifica credenciales. Retorna el usuario (dict) si son correctas, None si no.
+    """
+    usuario = buscar_usuario_por_email(email)
+    if not usuario or not usuario.get("contrasena"):
+        return None
+    if not verificar_password(password, usuario["contrasena"]):
+        return None
+    return usuario
+
+
+def _asegurar_columna_cdce(cursor):
+    """Verifica y añade la columna cdce si no existe."""
+    try:
+        cursor.execute("SELECT cdce FROM institucion_educativa LIMIT 1")
+        cursor.fetchall()
+    except Exception:
+        cursor.execute("ALTER TABLE institucion_educativa ADD COLUMN cdce VARCHAR(100)")
+
+
+def crear_institucion(nombre: str, direccion: str, telefono: str, cdce: str = None) -> int:
+    """Inserta una institución y retorna idInstitucion."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        _asegurar_columna_cdce(cursor)
+        cursor.execute(
+            "INSERT INTO institucion_educativa (nombre_institucion, direccion, telefono, cdce) VALUES (%s, %s, %s, %s)",
+            (nombre, direccion, telefono, cdce),
+        )
+        conn.commit()
+        return cursor.lastrowid
+    finally:
+        conn.close()
+
+
+def registrar_institucion_completa(
+    nombre_inst: str, direccion: str, telefono: str, cdce: str,
+    nombre_admin: str, apellido_admin: str, email_admin: str, contrasena_plana: str,
+    usuario_admin: str, cedula_admin: str = None,
+):
+    """
+    Transacción atómica: crea institución + directivo + 11 brigadas base.
+    NO ejecuta DDL (ALTER TABLE) — el esquema debe estar listo antes.
+    Retorna (id_institucion, id_usuario).
+    Si cualquier paso falla, hace rollback total.
+    """
+    from brigadas_catalogo import CATALOGO_BRIGADAS_BASE
+
+    conn = get_connection()
+    try:
+        conn.start_transaction()
+        cursor = conn.cursor()
+
+        # 1. Crear institución
+        cursor.execute(
+            "INSERT INTO institucion_educativa (nombre_institucion, direccion, telefono, cdce) VALUES (%s, %s, %s, %s)",
+            (nombre_inst, direccion, telefono, cdce or None),
+        )
+        id_inst = cursor.lastrowid
+
+        # 2. Crear usuario directivo
+        usuario_val = (usuario_admin or "").strip().lower() or None
+        cedula_val = (cedula_admin or "").strip() or None
+        cursor.execute(
+            """
+            INSERT INTO usuario (nombre, apellido, cedula, email, usuario, contrasena, rol, Brigada_idBrigada, Institucion_Educativa_idInstitucion)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (nombre_admin, apellido_admin, cedula_val, email_admin.strip().lower(), usuario_val, hash_password(contrasena_plana), "Directivo", None, id_inst),
+        )
+        id_usuario = cursor.lastrowid
+
+        # 3. Crear 11 brigadas base
+        for b in CATALOGO_BRIGADAS_BASE:
+            area = (b["area_accion"] or b["nombre"] or "General")[:45]
+            cursor.execute(
+                """
+                INSERT INTO brigada (
+                    nombre_brigada, area_accion, descripcion, coordinador, color_identificador,
+                    tipo_brigada, Institucion_Educativa_idInstitucion, profesor_id, subjefe_id
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (b["nombre"], area, b["descripcion"], None, b["color"], b["tipo_brigada"], id_inst, None, None),
+            )
+
+        conn.commit()
+        return id_inst, id_usuario
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        raise
+    finally:
+        conn.close()
+
+
+def listar_instituciones():
+    """Lista todas las instituciones. Retorna lista de dict: idInstitucion, nombre_institucion, direccion, telefono, logo_ruta, cdce."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(dictionary=True)
+        _asegurar_columna_cdce(cursor)
+        try:
+            cursor.execute(
+                "SELECT idInstitucion, nombre_institucion, direccion, telefono, logo_ruta, cdce FROM institucion_educativa ORDER BY nombre_institucion"
+            )
+        except Exception:
+            cursor.execute(
+                "SELECT idInstitucion, nombre_institucion, direccion, telefono, cdce FROM institucion_educativa ORDER BY nombre_institucion"
+            )
+        rows = cursor.fetchall()
+        for r in rows:
+            r.setdefault("logo_ruta", None)
+            r.setdefault("cdce", None)
+        return rows
+    finally:
+        conn.close()
+
+
+def obtener_institucion_por_id(id_institucion: int):
+    """Obtiene una institución por ID. Retorna dict con nombre_institucion, logo_ruta, cdce, etc."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(dictionary=True)
+        _asegurar_columna_cdce(cursor)
+        try:
+            cursor.execute(
+                "SELECT idInstitucion, nombre_institucion, direccion, telefono, logo_ruta, cdce FROM institucion_educativa WHERE idInstitucion = %s",
+                (id_institucion,),
+            )
+        except Exception:
+            cursor.execute(
+                "SELECT idInstitucion, nombre_institucion, direccion, telefono, cdce FROM institucion_educativa WHERE idInstitucion = %s",
+                (id_institucion,),
+            )
+        row = cursor.fetchone()
+        if row:
+            row.setdefault("logo_ruta", None)
+            row.setdefault("cdce", None)
+        return row
+    finally:
+        conn.close()
+
+
+def obtener_institucion_por_usuario(id_usuario: int):
+    """Obtiene la institución del usuario (vía institucion_id directo o vía su brigada). Retorna dict con nombre_institucion, logo_ruta o None."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(dictionary=True)
+        # Primero intentar por columna Institucion_Educativa_idInstitucion en Usuario (migración)
+        try:
+            cursor.execute(
+                """
+                SELECT i.idInstitucion, i.nombre_institucion, i.logo_ruta
+                FROM usuario u
+                LEFT JOIN brigada b ON b.idBrigada = u.Brigada_idBrigada
+                INNER JOIN institucion_educativa i ON i.idInstitucion = COALESCE(u.Institucion_Educativa_idInstitucion, b.Institucion_Educativa_idInstitucion)
+                WHERE u.idUsuario = %s AND (u.Institucion_Educativa_idInstitucion IS NOT NULL OR u.Brigada_idBrigada IS NOT NULL)
+                """,
+                (id_usuario,),
+            )
+            row = cursor.fetchone()
+            if row:
+                row.setdefault("logo_ruta", None)
+                return row
+        except Exception:
+            pass
+        # Fallback: solo por brigada
+        try:
+            cursor.execute(
+                """
+                SELECT i.idInstitucion, i.nombre_institucion, i.logo_ruta
+                FROM usuario u
+                INNER JOIN brigada b ON b.idBrigada = u.Brigada_idBrigada
+                INNER JOIN institucion_educativa i ON i.idInstitucion = b.Institucion_Educativa_idInstitucion
+                WHERE u.idUsuario = %s
+                """,
+                (id_usuario,),
+            )
+            row = cursor.fetchone()
+            if row:
+                row.setdefault("logo_ruta", None)
+            return row
+        except Exception:
+            return None
+    finally:
+        conn.close()
+
+
+def actualizar_logo_institucion(id_institucion: int, logo_ruta: str):
+    """Actualiza la ruta del logo de una institución. Requiere columna logo_ruta (migración)."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE institucion_educativa SET logo_ruta = %s WHERE idInstitucion = %s", (logo_ruta, id_institucion))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def listar_brigadas_por_institucion(institucion_id: int):
+    """Lista brigadas de una institución. Retorna lista de dict con idBrigada, nombre_brigada, etc."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT idBrigada, nombre_brigada, area_accion, Institucion_Educativa_idInstitucion
+            FROM brigada WHERE Institucion_Educativa_idInstitucion = %s ORDER BY idBrigada
+            """,
+            (institucion_id,),
+        )
+        return cursor.fetchall()
+    finally:
+        conn.close()
+
+
+def crear_brigada(nombre_brigada: str, area_accion: str, institucion_id: int, profesor_id: int = None) -> int:
+    """
+    Inserta una brigada y retorna idBrigada.
+    profesor_id: ID del profesor que la creó/administra (opcional, para admins que crean para un profesor).
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO brigada (nombre_brigada, area_accion, Institucion_Educativa_idInstitucion, profesor_id)
+            VALUES (%s, %s, %s, %s)
+            """,
+            (nombre_brigada, area_accion, institucion_id, profesor_id),
+        )
+        conn.commit()
+        return cursor.lastrowid
+    finally:
+        conn.close()
+
+
+def crear_usuario(nombre: str, apellido: str, email: str, contrasena_plana: str, rol: str, brigada_id: int = None, usuario: str = None, institucion_id: int = None, cedula: str = None) -> int:
+    """Inserta un usuario (contraseña se hashea). usuario = nombre de usuario para login. cedula opcional (para todos los roles). Retorna idUsuario."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        usuario_val = (usuario or "").strip() or None
+        if usuario_val:
+            usuario_val = usuario_val.lower()
+        cedula_val = (cedula or "").strip() or None
+        try:
+            cursor.execute(
+                """
+                INSERT INTO usuario (nombre, apellido, cedula, email, usuario, contrasena, rol, Brigada_idBrigada, Institucion_Educativa_idInstitucion)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (nombre, apellido, cedula_val, email.strip().lower(), usuario_val, hash_password(contrasena_plana), rol, brigada_id, institucion_id),
+            )
+        except Exception as e:
+            err = str(e).lower()
+            if "cedula" in err and "unknown column" in err:
+                cursor.execute(
+                    """
+                    INSERT INTO usuario (nombre, apellido, email, usuario, contrasena, rol, Brigada_idBrigada, Institucion_Educativa_idInstitucion)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (nombre, apellido, email.strip().lower(), usuario_val, hash_password(contrasena_plana), rol, brigada_id, institucion_id),
+                )
+            elif "usuario" in err and "unknown column" in err:
+                cursor.execute(
+                    """
+                    INSERT INTO usuario (nombre, apellido, cedula, email, contrasena, rol, Brigada_idBrigada)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (nombre, apellido, cedula_val, email.strip().lower(), hash_password(contrasena_plana), rol, brigada_id),
+                )
+            else:
+                raise
+        conn.commit()
+        return cursor.lastrowid
+    finally:
+        conn.close()
+
+
+def email_ya_existe(email: str) -> bool:
+    """True si ya existe un usuario con ese email."""
+    return buscar_usuario_por_email(email) is not None
+
+
+def cedula_ya_existe(cedula: str) -> bool:
+    """True si ya existe un usuario con esa cédula (cédula no vacía)."""
+    return obtener_id_usuario_por_cedula(cedula) is not None
+
+
+def obtener_id_usuario_por_cedula(cedula: str) -> int | None:
+    """Retorna idUsuario del usuario con esa cédula, o None."""
+    if not cedula or not (cedula or "").strip():
+        return None
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT idUsuario FROM usuario WHERE cedula = %s LIMIT 1", (cedula.strip(),))
+            row = cursor.fetchone()
+            return row[0] if row else None
+        except Exception as e:
+            if "cedula" in str(e).lower() and "unknown column" in str(e).lower():
+                return None
+            raise
+    finally:
+        conn.close()
+
+
+def usuario_ya_existe(usuario: str) -> bool:
+    """True si ya existe un usuario con ese nombre de usuario."""
+    if not usuario or not (usuario or "").strip():
+        return False
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT 1 FROM usuario WHERE usuario = %s", (usuario.strip().lower(),))
+            return cursor.fetchone() is not None
+        except Exception as e:
+            if "usuario" in str(e).lower() and "unknown column" in str(e).lower():
+                return False
+            raise
+    finally:
+        conn.close()
+
+
+def verificar_login_por_usuario_e_institucion(institucion_id: int, usuario: str, password: str, es_profesor: bool = None):
+    """
+    Verifica credenciales por institución + usuario + contraseña.
+    usuario: nombre de usuario o email.
+    es_profesor: True = solo rol Profesor, False = solo Directivo/Coordinador, None = cualquier rol.
+    Coincide por Usuario.institucion_id O por Brigada de la institución (tras migración).
+    Retorna el usuario (dict) o None.
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(dictionary=True)
+        usuario_str = (usuario or "").strip().lower()
+        # Intentar con columna Institucion_Educativa_idInstitucion en Usuario (LEFT JOIN brigada)
+        try:
+            cursor.execute(
+                """
+                SELECT u.idUsuario, u.nombre, u.apellido, u.email, u.usuario, u.contrasena, u.rol, u.Brigada_idBrigada, u.Institucion_Educativa_idInstitucion
+                FROM usuario u
+                LEFT JOIN brigada b ON b.idBrigada = u.Brigada_idBrigada
+                WHERE (u.Institucion_Educativa_idInstitucion = %s OR b.Institucion_Educativa_idInstitucion = %s)
+                  AND (u.usuario = %s OR u.email = %s)
+                LIMIT 1
+                """,
+                (institucion_id, institucion_id, usuario_str, usuario_str),
+            )
+            row = cursor.fetchone()
+        except Exception as e:
+            if "Institucion_Educativa_idInstitucion" in str(e) or "Unknown column" in str(e):
+                cursor.execute(
+                    """
+                    SELECT u.idUsuario, u.nombre, u.apellido, u.email, u.usuario, u.contrasena, u.rol, u.Brigada_idBrigada
+                    FROM usuario u
+                    INNER JOIN brigada b ON b.idBrigada = u.Brigada_idBrigada
+                    WHERE b.Institucion_Educativa_idInstitucion = %s
+                      AND (u.usuario = %s OR u.email = %s)
+                    LIMIT 1
+                    """,
+                    (institucion_id, usuario_str, usuario_str),
+                )
+                row = cursor.fetchone()
+            else:
+                raise
+        if not row or not row.get("contrasena"):
+            return None
+        if not verificar_password(password, row["contrasena"]):
+            return None
+        if es_profesor is True and row.get("rol") != "Profesor":
+            return None
+        if es_profesor is False and row.get("rol") not in ("Directivo", "Coordinador"):
+            return None
+        row.setdefault("usuario", None)
+        return row
+    finally:
+        conn.close()
+
+
+def listar_brigadistas():
+    """
+    Lista todos los usuarios (brigadistas) con el nombre de su brigada.
+    Retorna lista de dict: idUsuario, nombre, apellido, email, rol, Brigada_idBrigada, nombre_brigada.
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(dictionary=True)
+        try:
+            cursor.execute(
+                """
+                SELECT u.idUsuario, u.nombre, u.apellido, u.cedula, u.email, u.rol, u.Brigada_idBrigada,
+                       b.nombre_brigada
+                FROM usuario u
+                LEFT JOIN brigada b ON b.idBrigada = u.Brigada_idBrigada
+                ORDER BY u.nombre, u.apellido
+                """
+            )
+        except Exception:
+            cursor.execute(
+                """
+                SELECT u.idUsuario, u.nombre, u.apellido, u.email, u.rol, u.Brigada_idBrigada,
+                       b.nombre_brigada
+                FROM usuario u
+                LEFT JOIN brigada b ON b.idBrigada = u.Brigada_idBrigada
+                ORDER BY u.nombre, u.apellido
+                """
+            )
+        rows = cursor.fetchall()
+        for r in rows:
+            r.setdefault("cedula", None)
+        return rows
+    finally:
+        conn.close()
+
+
+def listar_brigadistas_visibles_only():
+    """
+    Lista solo brigadistas visibles: Profesor y alumnos (Brigadista Jefe, Subjefe, Brigadista).
+    Excluye Directivo y Coordinador. Retorna lista de dict con nombre_brigada.
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(dictionary=True)
+        try:
+            cursor.execute(
+                """
+                SELECT u.idUsuario, u.nombre, u.apellido, u.cedula, u.email, u.rol, u.Brigada_idBrigada,
+                       b.nombre_brigada
+                FROM usuario u
+                LEFT JOIN brigada b ON b.idBrigada = u.Brigada_idBrigada
+                WHERE u.rol IN ('Profesor', 'Brigadista Jefe', 'Subjefe', 'Brigadista')
+                ORDER BY u.rol = 'Profesor' DESC, u.nombre, u.apellido
+                """
+            )
+        except Exception:
+            cursor.execute(
+                """
+                SELECT u.idUsuario, u.nombre, u.apellido, u.email, u.rol, u.Brigada_idBrigada,
+                       b.nombre_brigada
+                FROM usuario u
+                LEFT JOIN brigada b ON b.idBrigada = u.Brigada_idBrigada
+                WHERE u.rol IN ('Profesor', 'Brigadista Jefe', 'Subjefe', 'Brigadista')
+                ORDER BY u.rol = 'Profesor' DESC, u.nombre, u.apellido
+                """
+            )
+        rows = cursor.fetchall()
+        for r in rows:
+            r.setdefault("cedula", None)
+        return rows
+    finally:
+        conn.close()
+
+
+def listar_alumnos_del_profesor(profesor_id: int):
+    """
+    Lista usuarios que son alumnos (Brigadista, Subjefe, Brigadista Jefe) en brigadas creadas por este profesor.
+    Para usar en selector de sublíder. Retorna lista de dict: idUsuario, nombre, apellido, email, rol.
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT u.idUsuario, u.nombre, u.apellido, u.email, u.rol
+            FROM usuario u
+            INNER JOIN brigada b ON b.idBrigada = u.Brigada_idBrigada AND b.profesor_id = %s
+            WHERE u.rol IN ('Brigadista Jefe', 'Subjefe', 'Brigadista')
+            ORDER BY u.nombre, u.apellido
+            """,
+            (profesor_id,),
+        )
+        return cursor.fetchall()
+    finally:
+        conn.close()
+
+
+def obtener_usuario(id_usuario: int):
+    """Obtiene un usuario por id (sin contraseña en uso). Retorna dict o None (incluye cedula si existe)."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(dictionary=True)
+        try:
+            cursor.execute(
+                "SELECT idUsuario, nombre, apellido, cedula, email, rol, Brigada_idBrigada FROM usuario WHERE idUsuario = %s",
+                (id_usuario,),
+            )
+        except Exception:
+            cursor.execute(
+                "SELECT idUsuario, nombre, apellido, email, rol, Brigada_idBrigada FROM usuario WHERE idUsuario = %s",
+                (id_usuario,),
+            )
+        row = cursor.fetchone()
+        if row:
+            row.setdefault("cedula", None)
+        return row
+    finally:
+        conn.close()
+
+
+def actualizar_usuario(id_usuario: int, nombre: str, apellido: str, email: str, rol: str, brigada_id: int, cedula: str = None):
+    """Actualiza nombre, apellido, email, rol, brigada y opcionalmente cedula. No modifica contraseña."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cedula_val = (cedula or "").strip() or None
+        try:
+            cursor.execute(
+                """
+                UPDATE usuario SET nombre = %s, apellido = %s, email = %s, rol = %s, Brigada_idBrigada = %s, cedula = %s
+                WHERE idUsuario = %s
+                """,
+                (nombre, apellido, email.strip().lower(), rol, brigada_id, cedula_val, id_usuario),
+            )
+        except Exception as e:
+            if "cedula" in str(e).lower() and "unknown column" in str(e).lower():
+                cursor.execute(
+                    """
+                    UPDATE usuario SET nombre = %s, apellido = %s, email = %s, rol = %s, Brigada_idBrigada = %s
+                    WHERE idUsuario = %s
+                    """,
+                    (nombre, apellido, email.strip().lower(), rol, brigada_id, id_usuario),
+                )
+            else:
+                raise
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def eliminar_usuario(id_usuario: int) -> str | None:
+    """
+    Elimina un usuario. Retorna None si OK, o mensaje de error si falla (p. ej. reportes asociados).
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM usuario WHERE idUsuario = %s", (id_usuario,))
+        conn.commit()
+        return None
+    except Exception as e:
+        return str(e)
+    finally:
+        conn.close()
+
+
+def resetear_contrasena(email: str, nueva_contrasena_plana: str) -> bool:
+    """Resetea la contraseña de un usuario por email de forma directa (legacy/interno)."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE usuario SET contrasena = %s WHERE email = %s",
+            (hash_password(nueva_contrasena_plana), email.strip().lower()),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+    finally:
+        conn.close()
+
+
+def invalidar_tokens_usuario(usuario_id: int):
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE password_resets SET used_at = NOW() WHERE usuario_id = %s AND used_at IS NULL", (usuario_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def crear_token_recuperacion(email: str):
+    """
+    Invalida previos, genera un token, lo guarda hasheado y retorna el token crudo.
+    Si el usuario solicita > 3 en la última hora, lanza excepción por rate limit.
+    Retorna el (token_crudo, usuario_id) o None si el usuario no existe.
+    """
+    usuario = buscar_usuario_por_email(email)
+    if not usuario:
+        return None
+
+    usuario_id = usuario["idUsuario"]
+
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(dictionary=True)
+        # Limite anti-spam (3 por hora)
+        cursor.execute("SELECT COUNT(*) as count FROM password_resets WHERE usuario_id = %s AND created_at >= NOW() - INTERVAL 1 HOUR", (usuario_id,))
+        row = cursor.fetchone()
+        if row and row['count'] >= 3:
+            raise Exception("Demasiadas solicitudes. Intente de nuevo en una hora.")
+
+        # Invalida antiguos
+        cursor.execute("UPDATE password_resets SET used_at = NOW() WHERE usuario_id = %s AND used_at IS NULL", (usuario_id,))
+        
+        # Genera el nuevo
+        token_crudo = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(token_crudo.encode()).hexdigest()
+        expires_at = datetime.now() + timedelta(minutes=15)
+        
+        cursor.execute(
+            "INSERT INTO password_resets (usuario_id, token_hash, expires_at) VALUES (%s, %s, %s)",
+            (usuario_id, token_hash, expires_at)
+        )
+        conn.commit()
+        return token_crudo, usuario_id
+    finally:
+        conn.close()
+
+
+def procesar_reseteo_con_token(token_crudo: str, nueva_contrasena_plana: str):
+    """
+    Valida token, y cambia la contraseña si está vigente y es genuino.
+    Retorna True si tuvo éxito o levanta una excepción / retorna False si es inválido.
+    """
+    token_hash = hashlib.sha256(token_crudo.strip().encode()).hexdigest()
+    
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT id, usuario_id, expires_at, used_at FROM password_resets WHERE token_hash = %s", (token_hash,))
+        record = cursor.fetchone()
+        
+        if not record:
+            return False # Token no existe
+            
+        if record['used_at'] is not None:
+            return False # Ya fue usado
+            
+        if record['expires_at'] < datetime.now():
+            return False # Expirado
+            
+        usuario_id = record['usuario_id']
+        
+        cursor.execute("UPDATE usuario SET contrasena = %s WHERE idUsuario = %s", (hash_password(nueva_contrasena_plana), usuario_id))
+        cursor.execute("UPDATE password_resets SET used_at = NOW() WHERE id = %s", (record['id'],))
+        conn.commit()
+        
+        return True
+    finally:
+        conn.close()
+
+
+# =====================================================
+# ROLES Y PERMISOS
+# =====================================================
+ROLES_ADMIN = ("Directivo", "Coordinador")
+ROLES_PROFESOR = ("Profesor",)
+ROLES_BRIGADISTAS = ("Brigadista Jefe", "Subjefe", "Brigadista")
+
+
+def es_admin(rol: str) -> bool:
+    """True si el rol es Directivo o Coordinador."""
+    return rol in ROLES_ADMIN
+
+
+def es_profesor(rol: str) -> bool:
+    """True si el rol es Profesor."""
+    return rol in ROLES_PROFESOR
+
+
+def es_brigadista(rol: str) -> bool:
+    """True si el rol es Brigadista Jefe, Subjefe o Brigadista."""
+    return rol in ROLES_BRIGADISTAS
+
+
+def listar_profesores_institucion(institucion_id: int, solo_sin_brigada: bool = False):
+    """
+    Lista todos los usuarios con rol 'Profesor' de una institución.
+    Busca por Institucion_Educativa_idInstitucion directamente (no por JOIN con brigada).
+    Si solo_sin_brigada=True, retorna solo profesores aún no asignados a brigada.
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(dictionary=True)
+        filtro_brigada = "AND u.Brigada_idBrigada IS NULL" if solo_sin_brigada else ""
+        cursor.execute(
+            f"""
+            SELECT u.idUsuario, u.nombre, u.apellido, u.email, u.Brigada_idBrigada, u.cedula
+            FROM usuario u
+            WHERE u.Institucion_Educativa_idInstitucion = %s
+              AND u.rol = 'Profesor'
+            {filtro_brigada}
+            ORDER BY u.nombre, u.apellido
+            """,
+            (institucion_id,),
+        )
+        return cursor.fetchall()
+    finally:
+        conn.close()
+
+
+def crear_profesor_institucional(
+    nombre: str, apellido: str, email: str, contrasena_plana: str,
+    usuario_str: str, cedula: str, institucion_id: int, brigada_id: int = None,
+) -> int:
+    """
+    Crea un profesor vinculado a una institución. Solo invocable por un directivo.
+    institucion_id es obligatorio (ValueError si None).
+    Si brigada_id se pasa, asigna profesor a brigada en transacción (ambos lados).
+    Valida que brigada pertenezca a la misma institución.
+    Retorna idUsuario.
+    """
+    if not institucion_id:
+        raise ValueError("institucion_id es obligatorio para crear un profesor.")
+
+    conn = get_connection()
+    try:
+        conn.start_transaction()
+        cursor = conn.cursor(dictionary=True)
+
+        # Si se pide asignar brigada, validar que pertenece a la misma institución
+        if brigada_id:
+            cursor.execute(
+                "SELECT idBrigada, profesor_id, Institucion_Educativa_idInstitucion FROM brigada WHERE idBrigada = %s",
+                (brigada_id,),
+            )
+            brigada = cursor.fetchone()
+            if not brigada:
+                raise ValueError("La brigada especificada no existe.")
+            if brigada.get("Institucion_Educativa_idInstitucion") != institucion_id:
+                raise ValueError("La brigada no pertenece a la institución del profesor.")
+            if brigada.get("profesor_id"):
+                raise ValueError("Esta brigada ya tiene un profesor responsable.")
+
+        # Crear usuario profesor
+        usuario_val = (usuario_str or "").strip().lower() or None
+        cedula_val = (cedula or "").strip() or None
+        cursor.execute(
+            """
+            INSERT INTO usuario (nombre, apellido, cedula, email, usuario, contrasena, rol, Brigada_idBrigada, Institucion_Educativa_idInstitucion)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (nombre, apellido, cedula_val, email.strip().lower(), usuario_val, hash_password(contrasena_plana), "Profesor", brigada_id, institucion_id),
+        )
+        id_usuario = cursor.lastrowid
+
+        # Si se asigna brigada, actualizar brigada.profesor_id
+        if brigada_id:
+            cursor.execute("UPDATE brigada SET profesor_id = %s WHERE idBrigada = %s", (id_usuario, brigada_id))
+
+        conn.commit()
+        return id_usuario
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        raise
+    finally:
+        conn.close()
+
+
+def listar_brigadas_profesor(profesor_id: int):
+    """
+    Lista las brigadas creadas por un profesor específico.
+    Retorna lista de dict con info de brigadas.
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT b.idBrigada, b.nombre_brigada, b.area_accion, b.fecha_creacion, b.profesor_id, b.subjefe_id
+            FROM brigada b
+            WHERE b.profesor_id = %s
+            ORDER BY b.fecha_creacion DESC
+            """,
+            (profesor_id,),
+        )
+        return cursor.fetchall()
+    finally:
+        conn.close()
+
+
+def listar_brigadas_otros_profesores(profesor_id: int, institucion_id: int):
+    """
+    Lista brigadas de otros profesores de la misma institución.
+    Retorna lista de dict con info de brigadas.
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT b.idBrigada, b.nombre_brigada, b.area_accion, b.fecha_creacion, b.profesor_id, b.subjefe_id,
+                   u.nombre AS profesor_nombre, u.apellido AS profesor_apellido
+            FROM brigada b
+            LEFT JOIN usuario u ON u.idUsuario = b.profesor_id
+            WHERE b.Institucion_Educativa_idInstitucion = %s
+              AND b.profesor_id != %s
+              AND b.profesor_id IS NOT NULL
+            ORDER BY b.fecha_creacion DESC
+            """,
+            (institucion_id, profesor_id),
+        )
+        return cursor.fetchall()
+    finally:
+        conn.close()
+
+
+def asignar_subjefe_brigada(brigada_id: int, subjefe_id: int):
+    """Asigna un brigadista como subjefe de una brigada."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE brigada SET subjefe_id = %s WHERE idBrigada = %s",
+            (subjefe_id, brigada_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def obtener_brigada(brigada_id: int):
+    """Obtiene una brigada por ID. Retorna dict o None."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT b.idBrigada, b.nombre_brigada, b.area_accion, b.fecha_creacion,
+                   b.Institucion_Educativa_idInstitucion, b.profesor_id, b.subjefe_id
+            FROM brigada b
+            WHERE b.idBrigada = %s
+            """,
+            (brigada_id,),
+        )
+        return cursor.fetchone()
+    finally:
+        conn.close()
+
+
+def listar_brigadistas_brigada(brigada_id: int):
+    """
+    Lista todos los brigadistas de una brigada específica.
+    Retorna lista de dict: idUsuario, nombre, apellido, email, rol.
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT u.idUsuario, u.nombre, u.apellido, u.email, u.rol
+            FROM usuario u
+            WHERE u.Brigada_idBrigada = %s
+              AND u.rol IN ('Brigadista Jefe', 'Subjefe', 'Brigadista')
+            ORDER BY
+                CASE u.rol
+                    WHEN 'Brigadista Jefe' THEN 1
+                    WHEN 'Subjefe' THEN 2
+                    WHEN 'Brigadista' THEN 3
+                END,
+                u.nombre, u.apellido
+            """,
+            (brigada_id,),
+        )
+        return cursor.fetchall()
+    finally:
+        conn.close()
+
+
+def listar_brigadistas_visibles(brigada_id: int):
+    """
+    Lista brigadistas visibles en el listado (Jefes y Brigadistas, NO subjefes).
+    Retorna lista de dict: idUsuario, nombre, apellido, email, rol.
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT u.idUsuario, u.nombre, u.apellido, u.email, u.rol
+            FROM usuario u
+            WHERE u.Brigada_idBrigada = %s
+              AND u.rol IN ('Brigadista Jefe', 'Brigadista')
+            ORDER BY
+                CASE u.rol
+                    WHEN 'Brigadista Jefe' THEN 1
+                    WHEN 'Brigadista' THEN 2
+                END,
+                u.nombre, u.apellido
+            """,
+            (brigada_id,),
+        )
+        return cursor.fetchall()
+    finally:
+        conn.close()
+>>>>>>> 6cb1e103cc1d0d934c3f169517ceacc4cb355f96

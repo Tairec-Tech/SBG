@@ -1,6 +1,14 @@
+<<<<<<< HEAD
 flet==0.80.5
 flet-charts==0.80.5
 mysql-connector-python
 Pillow
 python-dotenv
+=======
+flet==0.80.5
+flet-charts==0.80.5
+mysql-connector-python
+Pillow
+python-dotenv
+>>>>>>> 6cb1e103cc1d0d934c3f169517ceacc4cb355f96
 python-docx
