@@ -1,19 +1,47 @@
 """
-Formularios CRUD del SGB — alineados con db_brigadas_maracaibo.
-Cada formulario se abre en un diálogo al pulsar "Acceder" en las tarjetas de acción.
+Formularios CRUD del SBE — brigadas ambientales (tonos verdes).
 """
 
 import flet as ft
 
-# Reutilizar paleta de views
-COLOR_PRIMARIO = "#2563eb"
-COLOR_TEXTO = "#1e293b"
-COLOR_TEXTO_SEC = "#64748b"
-COLOR_BORDE = "#e2e8f0"
-COLOR_CARD = "#ffffff"
-COLOR_CANCELAR = "#64748b"  # Gris slate — identifica Cancelar/Cerrar
-RADIO = 10
-PADDING = 16
+from database.crud_brigada import insertar_brigada, actualizar_brigada, eliminar_brigada, obtener_brigada, listar_brigadas
+from database.crud_usuario import (
+    crear_usuario, email_ya_existe, cedula_ya_existe, obtener_id_usuario_por_cedula,
+    listar_brigadistas, actualizar_usuario, eliminar_usuario, obtener_usuario,
+    es_admin, es_profesor, listar_profesores_institucion, listar_alumnos_del_profesor,
+)
+from theme import (
+    COLOR_PRIMARIO,
+    COLOR_PRIMARIO_CLARO,
+    COLOR_TEXTO,
+    COLOR_TEXTO_SEC,
+    COLOR_BORDE,
+    COLOR_CARD,
+    COLOR_CANCELAR,
+)
+RADIO = 12
+PADDING = 20
+# Dimensiones del contenedor del formulario (modal)
+ANCHO_FORM = 520
+ALTURA_MAX_FORM = 480
+# Nueva Brigada: contenedor más compacto, alineado a la imagen
+ANCHO_FORM_NUEVA_BRIGADA = 400
+PADDING_NUEVA_BRIGADA = 20
+ALTURA_BOTON_NUEVA_BRIGADA = 52
+# Estilo común para campos (alineado a Figma)
+_CAMPO_PADDING = ft.Padding(14, 16)
+_CAMPO_BASE = dict(
+    border_color=COLOR_BORDE,
+    focused_border_color=COLOR_PRIMARIO,
+    border_radius=RADIO,
+    text_size=14,
+    color=COLOR_TEXTO,
+    hint_style=ft.TextStyle(size=14, color=COLOR_TEXTO_SEC),
+    cursor_color=COLOR_PRIMARIO,
+    content_padding=_CAMPO_PADDING,
+)
+# Dropdown no soporta cursor_color en Flet 0.80.5
+_DROPDOWN_BASE = {k: v for k, v in _CAMPO_BASE.items() if k != "cursor_color"}
 
 
 def _etiqueta(texto: str) -> ft.Control:
@@ -80,6 +108,20 @@ def _bloque_campo(label: str, control: ft.Control) -> ft.Column:
     )
 
 
+def _campo_con_titulo(titulo: str, control: ft.Control, espaciado_abajo: int = 16) -> ft.Column:
+    """Título visible sobre el control; se usa en todos los formularios tipo Figma."""
+    return ft.Column(
+        [
+            ft.Text(titulo, size=14, weight="w500", color=COLOR_TEXTO),
+            ft.Container(height=8),
+            control,
+            ft.Container(height=espaciado_abajo),
+        ],
+        horizontal_alignment=ft.CrossAxisAlignment.START,
+        spacing=0,
+    )
+
+
 def _cerrar_dialogo(page: ft.Page, _dialogo=None):
     """Cierra el diálogo activo usando la API de Flet (pop_dialog)."""
     page.pop_dialog()
@@ -94,31 +136,32 @@ def _dialogo_formulario(
     page: ft.Page,
     titulo: str,
     contenido: ft.Control,
-    ancho: float = 480,
+    ancho: float = None,
     on_guardar=None,
     texto_guardar: str = "Guardar",
     on_cancelar=None,
 ) -> ft.AlertDialog:
     """Crea un AlertDialog con contenido de formulario y botones Guardar/Cancelar."""
+    w = ancho if ancho is not None else ANCHO_FORM
     dialogo = ft.AlertDialog(
         modal=True,
         bgcolor=COLOR_CARD,
         title=ft.Text(titulo, size=18, weight="w600", color=COLOR_TEXTO),
         content=ft.Container(
             content=ft.Column([contenido], scroll=ft.ScrollMode.AUTO, tight=True),
-            width=ancho,
+            width=w,
             bgcolor=COLOR_CARD,
         ),
         actions=[
             ft.TextButton(
-                content=ft.Text("Cancelar", color=COLOR_CANCELAR, weight=ft.FontWeight.W_500),
-                style=ft.ButtonStyle(color=COLOR_CANCELAR),
+                content=ft.Text("Cancelar", color=COLOR_TEXTO, weight=ft.FontWeight.W_500),
+                style=ft.ButtonStyle(color=COLOR_TEXTO),
                 on_click=lambda e: _on_cancelar(e),
             ),
             ft.FilledButton(
                 texto_guardar,
-                style=ft.ButtonStyle(bgcolor=COLOR_PRIMARIO),
-                on_click=lambda e: (on_guardar(e) if on_guardar else None, _cerrar_dialogo(e.page)),
+                style=ft.ButtonStyle(bgcolor=COLOR_PRIMARIO, color="white"),
+                on_click=lambda e: on_guardar(e) if on_guardar else None,
             ),
         ],
         actions_alignment=ft.MainAxisAlignment.END,
@@ -136,9 +179,9 @@ def _abrir_dialogo(page: ft.Page, dialogo: ft.AlertDialog):
 
 
 def abrir_form_institucion_registrar(page: ft.Page):
-    nombre = _campo_texto("Nombre de la institución", "Ej: U.E. Nacional")
+    nombre = _campo_texto("Nombre de la institución", "Nombre de la institución")
     direccion = _campo_texto("Dirección", "Dirección completa", multiline=True)
-    telefono = _campo_texto("Teléfono", "Ej: 0261-1234567")
+    telefono = _campo_texto("Teléfono", "Teléfono")
 
     def on_guardar(_):
         # TODO: conectar con BD
@@ -210,7 +253,7 @@ def abrir_form_institucion_consultar(page: ft.Page):
         bgcolor=COLOR_CARD,
         title=ft.Text("Consultar institución", size=18, weight="w600", color=COLOR_TEXTO),
         content=ft.Container(content=contenido, width=420, bgcolor=COLOR_CARD),
-        actions=[ft.TextButton(content=ft.Text("Cerrar", color=COLOR_CANCELAR, weight=ft.FontWeight.W_500), style=ft.ButtonStyle(color=COLOR_CANCELAR), on_click=lambda e: _cerrar_dialogo(e.page))],
+        actions=[ft.TextButton(content=ft.Text("Cerrar", color=COLOR_TEXTO, weight=ft.FontWeight.W_500), style=ft.ButtonStyle(color=COLOR_TEXTO), on_click=lambda e: _cerrar_dialogo(e.page))],
     )
     _abrir_dialogo(page, dialogo)
 
@@ -244,7 +287,7 @@ def abrir_form_institucion_eliminar(page: ft.Page):
 def abrir_form_usuario_registrar(page: ft.Page):
     nombre = _campo_texto("Nombre", "Nombre")
     apellido = _campo_texto("Apellido", "Apellido")
-    email = _campo_texto("Correo electrónico", "email@ejemplo.com")
+    email = _campo_texto("Correo electrónico", "Correo electrónico")
     contrasena = _campo_texto("Contraseña", "Mínimo 6 caracteres", password=True)
     rol = _selector("Rol", ["Administrador", "Coordinador", "Brigadista"])
     id_brigada = _campo_numero("ID Brigada", "Número de brigada asignada")
@@ -327,7 +370,7 @@ def abrir_form_usuario_consultar(page: ft.Page):
         bgcolor=COLOR_CARD,
         title=ft.Text("Consultar usuario", size=18, weight="w600", color=COLOR_TEXTO),
         content=ft.Container(content=contenido, width=420, bgcolor=COLOR_CARD),
-        actions=[ft.TextButton(content=ft.Text("Cerrar", color=COLOR_CANCELAR, weight=ft.FontWeight.W_500), style=ft.ButtonStyle(color=COLOR_CANCELAR), on_click=lambda e: _cerrar_dialogo(e.page))],
+        actions=[ft.TextButton(content=ft.Text("Cerrar", color=COLOR_TEXTO, weight=ft.FontWeight.W_500), style=ft.ButtonStyle(color=COLOR_TEXTO), on_click=lambda e: _cerrar_dialogo(e.page))],
     )
     _abrir_dialogo(page, dialogo)
 
@@ -353,53 +396,92 @@ def abrir_form_usuario_eliminar(page: ft.Page):
 
 
 # ---------- Brigadas (4.0) ----------
-# Brigada: nombre_brigada, area_accion, fecha_creacion, Institucion_Educativa_idInstitucion
 
 
-def abrir_form_brigada_registrar(page: ft.Page):
-    nombre = _campo_texto("Nombre de la brigada", "Ej: Brigada Ambiental")
-    area_accion = _campo_texto("Área de acción", "Ej: Reforestación, Reciclaje")
-    id_institucion = _campo_numero("ID Institución", "Institución a la que pertenece")
-
-    def on_guardar(_):
-        page.snack_bar = ft.SnackBar(ft.Text("Brigada registrada (pendiente conectar BD)"))
-        page.snack_bar.open = True
-        page.update()
-
-    contenido = ft.Column(
-        [
-            _bloque_campo("Nombre de la brigada", nombre),
-            ft.Container(height=12),
-            _bloque_campo("Área de acción", area_accion),
-            ft.Container(height=12),
-            _bloque_campo("ID Institución", id_institucion),
-        ],
-        spacing=0,
+def abrir_form_brigada_registrar(page: ft.Page, on_success=None, usuario_actual=None):
+    """
+    DESHABILITADA: Las brigadas se crean automáticamente al registrar la institución.
+    No se permite crear brigadas fuera del catálogo institucional de 11.
+    """
+    page.snack_bar = ft.SnackBar(
+        ft.Text("Las brigadas se crean automáticamente al registrar la institución. No es posible crear brigadas adicionales."),
+        bgcolor="#ef4444",
     )
-    dialogo = _dialogo_formulario(page, "Registrar brigada", contenido, on_guardar=on_guardar)
-    _abrir_dialogo(page, dialogo)
+    page.snack_bar.open = True
+    page.update()
 
 
-def abrir_form_brigada_modificar(page: ft.Page):
-    id_brigada = _campo_numero("ID Brigada", "Brigada a modificar")
-    nombre = _campo_texto("Nombre", "")
-    area_accion = _campo_texto("Área de acción", "")
-    id_institucion = _campo_numero("ID Institución", "")
+def abrir_form_brigada_modificar(page: ft.Page, brigada=None, on_success=None):
+    """Abre el formulario de modificar brigada. Si brigada (dict) se pasa, precarga datos y al guardar actualiza en BD y llama on_success()."""
+    id_brigada_val = brigada.get("idBrigada") if brigada else None
+    nombre = ft.TextField(
+        label="Nombre",
+        hint_text="Nombre de la brigada",
+        value=brigada.get("nombre_brigada", "") if brigada else "",
+        **_CAMPO_BASE,
+    )
+    area_accion = ft.TextField(
+        label="Área de acción",
+        hint_text="Área de acción",
+        value=brigada.get("area_accion", "") if brigada else "",
+        **_CAMPO_BASE,
+    )
+    descripcion = ft.TextField(
+        label="Descripción",
+        hint_text="Descripción (opcional)",
+        value=brigada.get("descripcion") or "" if brigada else "",
+        multiline=True,
+        min_lines=2,
+        **_CAMPO_BASE,
+    )
+    coordinador = ft.TextField(
+        label="Coordinador",
+        hint_text="Nombre del coordinador",
+        value=brigada.get("coordinador") or "" if brigada else "",
+        **_CAMPO_BASE,
+    )
 
     def on_guardar(_):
-        page.snack_bar = ft.SnackBar(ft.Text("Brigada actualizada (pendiente conectar BD)"))
-        page.snack_bar.open = True
+        if not id_brigada_val:
+            page.snack_bar = ft.SnackBar(ft.Text("Error: no se identificó la brigada"))
+            page.snack_bar.open = True
+            page.update()
+            return
+        nom = (nombre.value or "").strip()
+        if not nom:
+            page.snack_bar = ft.SnackBar(ft.Text("El nombre es obligatorio"), bgcolor="#ef4444")
+            page.snack_bar.open = True
+            page.update()
+            return
+        try:
+            actualizar_brigada(
+                id_brigada=id_brigada_val,
+                nombre=nom,
+                area_accion=(area_accion.value or "").strip() or None,
+                descripcion=(descripcion.value or "").strip() or None,
+                coordinador=(coordinador.value or "").strip() or None,
+            )
+            _cerrar_dialogo(page)
+            page.snack_bar = ft.SnackBar(ft.Text("¡Brigada actualizada correctamente!"), bgcolor="#22c55e")
+            page.snack_bar.open = True
+            if on_success:
+                on_success()
+        except Exception as ex:
+            page.snack_bar = ft.SnackBar(ft.Text(f"Error: {ex}"), bgcolor="#ef4444")
+            page.snack_bar.open = True
         page.update()
 
     contenido = ft.Column(
         [
-            _bloque_campo("ID Brigada", id_brigada),
+            ft.Text(f"ID Brigada: {id_brigada_val}", size=13, color=COLOR_TEXTO_SEC),
             ft.Container(height=12),
-            _bloque_campo("Nombre", nombre),
+            nombre,
             ft.Container(height=12),
-            _bloque_campo("Área de acción", area_accion),
+            area_accion,
             ft.Container(height=12),
-            _bloque_campo("ID Institución", id_institucion),
+            descripcion,
+            ft.Container(height=12),
+            coordinador,
         ],
         spacing=0,
     )
@@ -430,28 +512,463 @@ def abrir_form_brigada_consultar(page: ft.Page):
         bgcolor=COLOR_CARD,
         title=ft.Text("Consultar brigada", size=18, weight="w600", color=COLOR_TEXTO),
         content=ft.Container(content=contenido, width=420, bgcolor=COLOR_CARD),
-        actions=[ft.TextButton(content=ft.Text("Cerrar", color=COLOR_CANCELAR, weight=ft.FontWeight.W_500), style=ft.ButtonStyle(color=COLOR_CANCELAR), on_click=lambda e: _cerrar_dialogo(e.page))],
+        actions=[ft.TextButton(content=ft.Text("Cerrar", color=COLOR_TEXTO, weight=ft.FontWeight.W_500), style=ft.ButtonStyle(color=COLOR_TEXTO), on_click=lambda e: _cerrar_dialogo(e.page))],
     )
     _abrir_dialogo(page, dialogo)
 
 
-def abrir_form_brigada_eliminar(page: ft.Page):
-    id_brigada = _campo_numero("ID Brigada", "Brigada a eliminar")
+def abrir_form_brigada_eliminar(page: ft.Page, brigada=None, on_success=None):
+    """Abre el diálogo de confirmación para eliminar. Si brigada (dict) se pasa, muestra nombre y al confirmar elimina en BD y llama on_success()."""
+    id_brigada_val = brigada.get("idBrigada") if brigada else None
+    nombre_brigada = (brigada.get("nombre_brigada") or "esta brigada") if brigada else ""
 
     def on_eliminar(_):
-        page.snack_bar = ft.SnackBar(ft.Text("Brigada eliminada (pendiente conectar BD)"))
-        page.snack_bar.open = True
+        if not id_brigada_val:
+            page.snack_bar = ft.SnackBar(ft.Text("Error: no se identificó la brigada", color="white"), bgcolor="#ef4444")
+            page.snack_bar.open = True
+            page.update()
+            return
+
+        # 1. Ejecutar acción en BD
+        err = eliminar_brigada(id_brigada_val)
+
+        # 2. Cerrar el modal y FORZAR la actualización visual
+        _cerrar_dialogo(page)
         page.update()
+
+        # 3. Micro-pausa no bloqueante para aislar los updates de Flet (condición de carrera)
+        import threading
+        import time
+
+        def show_msg():
+            time.sleep(0.2)
+            if err:
+                page.snack_bar = ft.SnackBar(ft.Text(err, color="white"), bgcolor="#ef4444")
+            else:
+                page.snack_bar = ft.SnackBar(ft.Text("Brigada eliminada correctamente", color="white"), bgcolor="#22c55e")
+                if on_success:
+                    on_success()
+            page.snack_bar.open = True
+            page.update()
+
+        threading.Thread(target=show_msg).start()
 
     contenido = ft.Column(
         [
-            ft.Text("Eliminar una brigada puede afectar actividades y usuarios asociados.", size=13, color=COLOR_TEXTO_SEC),
+            ft.Text("Eliminar una brigada puede afectar actividades y usuarios asociados. Solo se puede eliminar si no tiene usuarios asignados.", size=13, color=COLOR_TEXTO_SEC),
             ft.Container(height=16),
-            _bloque_campo("ID Brigada", id_brigada),
+            ft.Text(f"¿Eliminar la brigada «{nombre_brigada}» (ID {id_brigada_val})?", size=14, weight="w600", color=COLOR_TEXTO),
         ],
         spacing=0,
     )
     dialogo = _dialogo_formulario(page, "Eliminar brigada", contenido, on_guardar=on_eliminar, texto_guardar="Eliminar")
+    _abrir_dialogo(page, dialogo)
+
+
+def abrir_form_brigada_agregar_miembros(page: ft.Page, brigada=None, on_success=None):
+    """Abre el diálogo para agregar miembros a una brigada. Lista usuarios de otras brigadas y permite asignarlos a esta."""
+    if not brigada:
+        page.snack_bar = ft.SnackBar(ft.Text("Error: no se especificó la brigada"))
+        page.snack_bar.open = True
+        page.update()
+        return
+    id_brigada = brigada.get("idBrigada")
+    nombre_brigada = brigada.get("nombre_brigada") or f"Brigada {id_brigada}"
+    try:
+        todos = listar_brigadistas()
+    except Exception:
+        todos = []
+    miembros_actuales = [u for u in todos if (u.get("Brigada_idBrigada") or 0) == id_brigada]
+    disponibles = [u for u in todos if (u.get("Brigada_idBrigada") or 0) != id_brigada]
+    opciones_dropdown = [
+        ft.dropdown.Option(
+            str(u["idUsuario"]),
+            f"{u.get('nombre', '')} {u.get('apellido', '')} — {u.get('nombre_brigada') or 'Sin brigada'}",
+        )
+        for u in disponibles
+    ]
+    selector_usuario = ft.Dropdown(
+        hint_text="Seleccione un usuario para agregar a esta brigada",
+        options=opciones_dropdown,
+        border_color=COLOR_BORDE,
+        focused_border_color=COLOR_PRIMARIO,
+        border_radius=RADIO,
+        text_size=14,
+        color=COLOR_TEXTO,
+        content_padding=_CAMPO_PADDING,
+    )
+
+    def on_agregar(_):
+        val = selector_usuario.value
+        if not val:
+            page.snack_bar = ft.SnackBar(ft.Text("Seleccione un usuario"), bgcolor="#ef4444")
+            page.snack_bar.open = True
+            page.update()
+            return
+        id_usuario = int(val)
+        usuario = obtener_usuario(id_usuario)
+        if not usuario:
+            page.snack_bar = ft.SnackBar(ft.Text("Usuario no encontrado"), bgcolor="#ef4444")
+            page.snack_bar.open = True
+            page.update()
+            return
+        try:
+            actualizar_usuario(
+                id_usuario,
+                nombre=usuario.get("nombre") or "",
+                apellido=usuario.get("apellido") or "",
+                email=usuario.get("email") or "",
+                rol=usuario.get("rol") or "Brigadista",
+                brigada_id=id_brigada,
+            )
+            _cerrar_dialogo(page)
+            page.snack_bar = ft.SnackBar(ft.Text("¡Miembro agregado a la brigada!"), bgcolor="#22c55e")
+            page.snack_bar.open = True
+            if on_success:
+                on_success()
+        except Exception as ex:
+            page.snack_bar = ft.SnackBar(ft.Text(f"Error: {ex}"), bgcolor="#ef4444")
+            page.snack_bar.open = True
+        page.update()
+
+    lista_actuales = ft.Column(
+        [
+            ft.Text("Miembros actuales", size=14, weight="w600", color=COLOR_TEXTO),
+            ft.Container(height=8),
+            *(
+                [
+                    ft.Container(
+                        content=ft.Text(f"• {u.get('nombre', '')} {u.get('apellido', '')} ({u.get('email', '')})", size=13, color=COLOR_TEXTO_SEC),
+                        padding=ft.Padding(0, 4),
+                    )
+                    for u in miembros_actuales
+                ]
+                if miembros_actuales
+                else [ft.Text("Ninguno aún.", size=13, color=COLOR_TEXTO_SEC)]
+            ),
+        ],
+        spacing=0,
+        horizontal_alignment=ft.CrossAxisAlignment.START,
+    )
+    bloques_agregar = [
+        ft.Text("Usuario a agregar", size=14, weight="w500", color=COLOR_TEXTO),
+        ft.Container(height=8),
+        selector_usuario,
+        ft.Container(height=16),
+        ft.Row(
+            [
+                ft.FilledButton(
+                    "Agregar a esta brigada",
+                    style=ft.ButtonStyle(bgcolor=COLOR_PRIMARIO, shape=ft.RoundedRectangleBorder(radius=RADIO)),
+                    on_click=on_agregar,
+                ),
+            ],
+            alignment=ft.MainAxisAlignment.END,
+        ),
+    ]
+    if not disponibles:
+        bloques_agregar = [
+            ft.Text("No hay usuarios de otras brigadas para agregar. Cree brigadistas en otras brigadas o regístrelos desde «Brigadistas».", size=13, color=COLOR_TEXTO_SEC),
+        ]
+    contenido = ft.Column(
+        [
+            ft.Text(f"Agregar miembros a «{nombre_brigada}». Los usuarios de otras brigadas pueden reasignarse aquí.", size=13, color=COLOR_TEXTO_SEC),
+            ft.Container(height=16),
+            lista_actuales,
+            ft.Container(height=20),
+            *bloques_agregar,
+        ],
+        spacing=0,
+    )
+    dialogo = ft.AlertDialog(
+        modal=True,
+        bgcolor=COLOR_CARD,
+        title=ft.Text("Agregar miembros", size=18, weight="w600", color=COLOR_TEXTO),
+        content=ft.Container(content=contenido, width=440, bgcolor=COLOR_CARD),
+        actions=[
+            ft.TextButton(
+                content=ft.Text("Cerrar", color=COLOR_CANCELAR, weight=ft.FontWeight.W_500),
+                style=ft.ButtonStyle(color=COLOR_CANCELAR),
+                on_click=lambda e: _cerrar_dialogo(e.page),
+            ),
+        ],
+    )
+    _abrir_dialogo(page, dialogo)
+
+
+# ---------- Nuevo Brigadista (solo desde Brigadistas: registrar alumno) ----------
+def abrir_form_brigadista_registrar(page: ft.Page, on_success=None):
+    """Registrar alumno (brigadista). Los alumnos no usan el programa; solo se registran aquí. Cédula obligatoria."""
+    nombre = ft.TextField(hint_text="Nombre", **_CAMPO_BASE)
+    apellido = ft.TextField(hint_text="Apellido", **_CAMPO_BASE)
+    cedula = ft.TextField(hint_text="Cédula (obligatoria)", **_CAMPO_BASE)
+    rol_brigadista = ft.Dropdown(
+        hint_text="Rol en la brigada",
+        options=[
+            ft.dropdown.Option("Brigadista Jefe", "Jefe de Brigada"),
+            ft.dropdown.Option("Brigadista", "Brigadista"),
+        ],
+        value="Brigadista",
+        border_color=COLOR_BORDE,
+        focused_border_color=COLOR_PRIMARIO,
+        border_radius=RADIO,
+        text_size=14,
+        color=COLOR_TEXTO,
+        content_padding=_CAMPO_PADDING,
+    )
+    import json
+    try:
+        user_raw = page.client_storage.get("usuario_actual")
+        usuario_actual = page.data.get("usuario_actual") if getattr(page, "data", None) and getattr(page.data, "get", None) else None
+        if not usuario_actual and user_raw:
+            usuario_actual = json.loads(user_raw) if isinstance(user_raw, str) else (user_raw or {})
+    except Exception:
+        usuario_actual = {}
+        
+    usuario_actual = usuario_actual or {}
+    rol_actual = usuario_actual.get("rol", "")
+    brigada_rol_id = usuario_actual.get("Brigada_idBrigada") if not es_admin(rol_actual) else None
+
+    brigadas_opciones = []
+    try:
+        for b in listar_brigadas((page.data or {}).get("brigada_activa"), brigada_rol_id=brigada_rol_id):
+            brigadas_opciones.append(ft.dropdown.Option(str(b["idBrigada"]), b["nombre_brigada"] or f"Brigada {b['idBrigada']}"))
+    except Exception:
+        pass
+    brigada = ft.Dropdown(
+        hint_text="Seleccione una brigada",
+        options=brigadas_opciones,
+        border_color=COLOR_BORDE,
+        focused_border_color=COLOR_PRIMARIO,
+        border_radius=RADIO,
+        text_size=14,
+        color=COLOR_TEXTO,
+        content_padding=_CAMPO_PADDING,
+    )
+
+    contenido = ft.Column(
+        [
+            ft.Text("Los alumnos no inician sesión en el sistema; solo se registran desde aquí.", size=12, color=COLOR_TEXTO_SEC),
+            ft.Container(height=12),
+            _campo_con_titulo("Nombre *", nombre),
+            _campo_con_titulo("Apellido *", apellido),
+            _campo_con_titulo("Cédula *", cedula),
+            _campo_con_titulo("Rol en la Brigada", rol_brigadista),
+            _campo_con_titulo("Brigada *", brigada, espaciado_abajo=0),
+        ],
+        spacing=0,
+    )
+
+    def on_agregar(_):
+        nom = (nombre.value or "").strip()
+        ape = (apellido.value or "").strip()
+        cedula_val = (cedula.value or "").strip()
+        brigada_id_val = brigada.value
+        if not nom:
+            page.snack_bar = ft.SnackBar(ft.Text("El nombre es obligatorio"), bgcolor="#ef4444")
+            page.snack_bar.open = True
+            page.update()
+            return
+        if not ape:
+            page.snack_bar = ft.SnackBar(ft.Text("El apellido es obligatorio"), bgcolor="#ef4444")
+            page.snack_bar.open = True
+            page.update()
+            return
+        if not cedula_val:
+            page.snack_bar = ft.SnackBar(ft.Text("La cédula es obligatoria"), bgcolor="#ef4444")
+            page.snack_bar.open = True
+            page.update()
+            return
+        if not brigada_id_val:
+            page.snack_bar = ft.SnackBar(ft.Text("Seleccione una brigada"), bgcolor="#ef4444")
+            page.snack_bar.open = True
+            page.update()
+            return
+        if cedula_ya_existe(cedula_val):
+            page.snack_bar = ft.SnackBar(ft.Text("Ya existe un brigadista con esa cédula"), bgcolor="#ef4444")
+            page.snack_bar.open = True
+            page.update()
+            return
+        try:
+            rol_seleccionado = rol_brigadista.value or "Brigadista"
+            # Alumnos no usan el programa: email y contraseña internos
+            email_alumno = f"{cedula_val}@alumno.local"
+            if email_ya_existe(email_alumno):
+                email_alumno = f"{cedula_val}_{id(page)}@alumno.local"
+            crear_usuario(
+                nombre=nom,
+                apellido=ape,
+                email=email_alumno,
+                contrasena_plana="alumno123",
+                rol=rol_seleccionado,
+                brigada_id=int(brigada_id_val),
+                cedula=cedula_val,
+            )
+            _cerrar_dialogo(page)
+            page.snack_bar = ft.SnackBar(ft.Text("¡Alumno (brigadista) registrado correctamente!"), bgcolor="#22c55e")
+            page.snack_bar.open = True
+            if on_success:
+                on_success()
+        except Exception as ex:
+            page.snack_bar = ft.SnackBar(ft.Text(f"Error: {ex}"), bgcolor="#ef4444")
+            page.snack_bar.open = True
+        page.update()
+
+    dialogo = ft.AlertDialog(
+        modal=True,
+        bgcolor=COLOR_CARD,
+        title=ft.Text("Registrar alumno (brigadista)", size=18, weight="w600", color=COLOR_TEXTO),
+        content=ft.Container(
+            content=ft.Column([contenido], scroll=ft.ScrollMode.AUTO, tight=True),
+            width=ANCHO_FORM,
+            bgcolor=COLOR_CARD,
+        ),
+        actions=[
+            ft.TextButton(content=ft.Text("Cancelar", color=COLOR_TEXTO), style=ft.ButtonStyle(color=COLOR_TEXTO), on_click=lambda e: _cerrar_dialogo(e.page)),
+            ft.FilledButton("Agregar alumno", style=ft.ButtonStyle(bgcolor=COLOR_PRIMARIO, color="white"), on_click=on_agregar),
+        ],
+        actions_alignment=ft.MainAxisAlignment.END,
+    )
+    page.show_dialog(dialogo)
+
+
+def abrir_form_brigadista_modificar(page: ft.Page, brigadista=None, on_success=None):
+    """Abre el formulario para editar un brigadista (Usuario). Precarga datos y actualiza en BD (incl. cédula)."""
+    if not brigadista:
+        page.snack_bar = ft.SnackBar(ft.Text("Error: no se pasó el brigadista"))
+        page.snack_bar.open = True
+        page.update()
+        return
+    id_val = brigadista.get("idUsuario")
+    nombre = ft.TextField(label="Nombre", value=brigadista.get("nombre") or "", **_CAMPO_BASE)
+    apellido = ft.TextField(label="Apellido", value=brigadista.get("apellido") or "", **_CAMPO_BASE)
+    cedula = ft.TextField(label="Cédula", value=brigadista.get("cedula") or "", **_CAMPO_BASE)
+    correo = ft.TextField(label="Correo electrónico", value=brigadista.get("email") or "", **_CAMPO_BASE)
+    rol = ft.Dropdown(
+        label="Rol",
+        value=brigadista.get("rol") or "Brigadista",
+        options=[
+            ft.dropdown.Option("Brigadista Jefe", "Jefe de Brigada"),
+            ft.dropdown.Option("Brigadista", "Brigadista"),
+            ft.dropdown.Option("Profesor", "Profesor"),
+            ft.dropdown.Option("Coordinador", "Coordinador"),
+            ft.dropdown.Option("Directivo", "Directivo"),
+        ],
+        **_DROPDOWN_BASE,
+    )
+    import json
+    try:
+        user_raw = page.client_storage.get("usuario_actual")
+        usuario_actual = page.data.get("usuario_actual") if getattr(page, "data", None) and getattr(page.data, "get", None) else None
+        if not usuario_actual and user_raw:
+            usuario_actual = json.loads(user_raw) if isinstance(user_raw, str) else (user_raw or {})
+    except Exception:
+        usuario_actual = {}
+        
+    usuario_actual = usuario_actual or {}
+    rol_actual = usuario_actual.get("rol", "")
+    brigada_rol_id = usuario_actual.get("Brigada_idBrigada") if not es_admin(rol_actual) else None
+
+    brigadas_opciones = []
+    try:
+        for b in listar_brigadas((page.data or {}).get("brigada_activa"), brigada_rol_id=brigada_rol_id):
+            brigadas_opciones.append(ft.dropdown.Option(str(b["idBrigada"]), b["nombre_brigada"] or f"Brigada {b['idBrigada']}"))
+    except Exception:
+        pass
+    brigada = ft.Dropdown(
+        label="Brigada",
+        value=str(brigadista.get("Brigada_idBrigada") or ""),
+        options=brigadas_opciones,
+        **_DROPDOWN_BASE,
+    )
+
+    def on_guardar(_):
+        nom = (nombre.value or "").strip()
+        ape = (apellido.value or "").strip()
+        cedula_val = (cedula.value or "").strip()
+        email_val = (correo.value or "").strip().lower()
+        if not nom:
+            page.snack_bar = ft.SnackBar(ft.Text("El nombre es obligatorio"), bgcolor="#ef4444")
+            page.snack_bar.open = True
+            page.update()
+            return
+        if not email_val:
+            page.snack_bar = ft.SnackBar(ft.Text("El correo es obligatorio"), bgcolor="#ef4444")
+            page.snack_bar.open = True
+            page.update()
+            return
+        brigada_id_val = brigada.value
+        if not brigada_id_val:
+            page.snack_bar = ft.SnackBar(ft.Text("Seleccione una brigada"), bgcolor="#ef4444")
+            page.snack_bar.open = True
+            page.update()
+            return
+        if cedula_val:
+            otro_id = obtener_id_usuario_por_cedula(cedula_val)
+            if otro_id is not None and otro_id != id_val:
+                page.snack_bar = ft.SnackBar(ft.Text("Ya existe otro brigadista con esa cédula"), bgcolor="#ef4444")
+                page.snack_bar.open = True
+                page.update()
+                return
+        try:
+            actualizar_usuario(
+                id_usuario=id_val,
+                nombre=nom,
+                apellido=ape,
+                email=email_val,
+                rol=(rol.value or "Brigadista"),
+                brigada_id=int(brigada_id_val),
+                cedula=cedula_val or None,
+            )
+            _cerrar_dialogo(page)
+            page.snack_bar = ft.SnackBar(ft.Text("¡Brigadista actualizado correctamente!"), bgcolor="#22c55e")
+            page.snack_bar.open = True
+            if on_success:
+                on_success()
+        except Exception as ex:
+            page.snack_bar = ft.SnackBar(ft.Text(f"Error: {ex}"), bgcolor="#ef4444")
+            page.snack_bar.open = True
+        page.update()
+
+    contenido = ft.Column(
+        [ft.Text(f"ID: {id_val}", size=13, color=COLOR_TEXTO_SEC), ft.Container(height=12), nombre, apellido, cedula, correo, rol, brigada],
+        spacing=12,
+    )
+    dialogo = _dialogo_formulario(page, "Modificar brigadista", contenido, on_guardar=on_guardar)
+    _abrir_dialogo(page, dialogo)
+
+
+def abrir_form_brigadista_eliminar(page: ft.Page, brigadista=None, on_success=None):
+    """Confirmación para eliminar un brigadista (Usuario)."""
+    if not brigadista:
+        page.snack_bar = ft.SnackBar(ft.Text("Error: no se pasó el brigadista"))
+        page.snack_bar.open = True
+        page.update()
+        return
+    id_val = brigadista.get("idUsuario")
+    nombre_completo = f"{brigadista.get('nombre') or ''} {brigadista.get('apellido') or ''}".strip() or brigadista.get("email") or "este usuario"
+
+    def on_eliminar(_):
+        err = eliminar_usuario(id_val)
+        if err:
+            page.snack_bar = ft.SnackBar(ft.Text(err))
+            page.snack_bar.open = True
+            page.update()
+            return
+        _cerrar_dialogo(page)
+        page.snack_bar = ft.SnackBar(ft.Text("Brigadista eliminado correctamente"), bgcolor="#22c55e")
+        page.snack_bar.open = True
+        if on_success:
+            on_success()
+        page.update()
+
+    contenido = ft.Column(
+        [
+            ft.Text(f"¿Eliminar a {nombre_completo} (ID {id_val})? Esta acción no se puede deshacer.", size=14, color=COLOR_TEXTO),
+        ],
+        spacing=0,
+    )
+    dialogo = _dialogo_formulario(page, "Eliminar brigadista", contenido, on_guardar=on_eliminar, texto_guardar="Eliminar")
     _abrir_dialogo(page, dialogo)
 
 
@@ -502,7 +1019,7 @@ def abrir_form_brigada_miembros(page: ft.Page):
         bgcolor=COLOR_CARD,
         title=ft.Text("Gestionar miembros de brigada", size=18, weight="w600", color=COLOR_TEXTO),
         content=ft.Container(content=contenido, width=420, bgcolor=COLOR_CARD),
-        actions=[ft.TextButton(content=ft.Text("Cerrar", color=COLOR_CANCELAR, weight=ft.FontWeight.W_500), style=ft.ButtonStyle(color=COLOR_CANCELAR), on_click=lambda e: _cerrar_dialogo(e.page))],
+        actions=[ft.TextButton(content=ft.Text("Cerrar", color=COLOR_TEXTO, weight=ft.FontWeight.W_500), style=ft.ButtonStyle(color=COLOR_TEXTO), on_click=lambda e: _cerrar_dialogo(e.page))],
     )
     _abrir_dialogo(page, dialogo)
 
@@ -603,7 +1120,7 @@ def abrir_form_actividad_consultar(page: ft.Page):
         bgcolor=COLOR_CARD,
         title=ft.Text("Consultar actividad", size=18, weight="w600", color=COLOR_TEXTO),
         content=ft.Container(content=contenido, width=420, bgcolor=COLOR_CARD),
-        actions=[ft.TextButton(content=ft.Text("Cerrar", color=COLOR_CANCELAR, weight=ft.FontWeight.W_500), style=ft.ButtonStyle(color=COLOR_CANCELAR), on_click=lambda e: _cerrar_dialogo(e.page))],
+        actions=[ft.TextButton(content=ft.Text("Cerrar", color=COLOR_TEXTO, weight=ft.FontWeight.W_500), style=ft.ButtonStyle(color=COLOR_TEXTO), on_click=lambda e: _cerrar_dialogo(e.page))],
     )
     _abrir_dialogo(page, dialogo)
 
@@ -723,7 +1240,7 @@ def abrir_form_reporte_consultar(page: ft.Page):
         bgcolor=COLOR_CARD,
         title=ft.Text("Consultar reporte", size=18, weight="w600", color=COLOR_TEXTO),
         content=ft.Container(content=contenido, width=420, bgcolor=COLOR_CARD),
-        actions=[ft.TextButton(content=ft.Text("Cerrar", color=COLOR_CANCELAR, weight=ft.FontWeight.W_500), style=ft.ButtonStyle(color=COLOR_CANCELAR), on_click=lambda e: _cerrar_dialogo(e.page))],
+        actions=[ft.TextButton(content=ft.Text("Cerrar", color=COLOR_TEXTO, weight=ft.FontWeight.W_500), style=ft.ButtonStyle(color=COLOR_TEXTO), on_click=lambda e: _cerrar_dialogo(e.page))],
     )
     _abrir_dialogo(page, dialogo)
 
@@ -753,9 +1270,9 @@ def abrir_form_reporte_eliminar(page: ft.Page):
 
 
 def abrir_form_indicador_registrar(page: ft.Page):
-    valor = _campo_texto("Valor", "Ej: 15.5")
-    tipo = _campo_texto("Tipo de indicador", "Ej: Árboles plantados")
-    unidad = _campo_texto("Unidad", "Ej: unidades, kg, %")
+    valor = _campo_texto("Valor", "Valor numérico")
+    tipo = _campo_texto("Tipo de indicador", "Tipo de indicador")
+    unidad = _campo_texto("Unidad", "Unidad de medida")
     id_actividad = _campo_numero("ID Actividad", "Actividad asociada")
 
     def on_guardar(_):
@@ -832,7 +1349,7 @@ def abrir_form_indicador_consultar(page: ft.Page):
         bgcolor=COLOR_CARD,
         title=ft.Text("Consultar indicador", size=18, weight="w600", color=COLOR_TEXTO),
         content=ft.Container(content=contenido, width=420, bgcolor=COLOR_CARD),
-        actions=[ft.TextButton(content=ft.Text("Cerrar", color=COLOR_CANCELAR, weight=ft.FontWeight.W_500), style=ft.ButtonStyle(color=COLOR_CANCELAR), on_click=lambda e: _cerrar_dialogo(e.page))],
+        actions=[ft.TextButton(content=ft.Text("Cerrar", color=COLOR_TEXTO, weight=ft.FontWeight.W_500), style=ft.ButtonStyle(color=COLOR_TEXTO), on_click=lambda e: _cerrar_dialogo(e.page))],
     )
     _abrir_dialogo(page, dialogo)
 
@@ -876,7 +1393,7 @@ def abrir_form_indicador_resumen(page: ft.Page):
         bgcolor=COLOR_CARD,
         title=ft.Text("Resumen total de indicadores", size=18, weight="w600", color=COLOR_TEXTO),
         content=ft.Container(content=contenido, width=420, bgcolor=COLOR_CARD),
-        actions=[ft.TextButton(content=ft.Text("Cerrar", color=COLOR_CANCELAR, weight=ft.FontWeight.W_500), style=ft.ButtonStyle(color=COLOR_CANCELAR), on_click=lambda e: _cerrar_dialogo(e.page))],
+        actions=[ft.TextButton(content=ft.Text("Cerrar", color=COLOR_TEXTO, weight=ft.FontWeight.W_500), style=ft.ButtonStyle(color=COLOR_TEXTO), on_click=lambda e: _cerrar_dialogo(e.page))],
     )
     _abrir_dialogo(page, dialogo)
 
@@ -887,9 +1404,9 @@ def abrir_form_indicador_resumen(page: ft.Page):
 def abrir_dialogo_acerca_de(page: ft.Page):
     contenido = ft.Column(
         [
-            ft.Text("Sistema de Brigadas Escolares (SGB)", size=16, weight="w600", color=COLOR_TEXTO),
+            ft.Text("Sistema de Brigadas Escolares (SBE)", size=16, weight="w600", color=COLOR_TEXTO),
             ft.Container(height=8),
-            ft.Text("Municipio Maracaibo — Gestión de brigadas ambientales.", size=13, color=COLOR_TEXTO_SEC),
+            ft.Text("Municipio Maracaibo — Gestión de brigadas escolares.", size=13, color=COLOR_TEXTO_SEC),
             ft.Container(height=12),
             ft.Text("Versión 1.0", size=12, color=COLOR_TEXTO_SEC),
         ],
@@ -900,7 +1417,7 @@ def abrir_dialogo_acerca_de(page: ft.Page):
         bgcolor=COLOR_CARD,
         title=ft.Text("Acerca de", size=18, weight="w600", color=COLOR_TEXTO),
         content=ft.Container(content=contenido, width=380, bgcolor=COLOR_CARD),
-        actions=[ft.TextButton(content=ft.Text("Cerrar", color=COLOR_CANCELAR, weight=ft.FontWeight.W_500), style=ft.ButtonStyle(color=COLOR_CANCELAR), on_click=lambda e: _cerrar_dialogo(e.page))],
+        actions=[ft.TextButton(content=ft.Text("Cerrar", color=COLOR_TEXTO, weight=ft.FontWeight.W_500), style=ft.ButtonStyle(color=COLOR_TEXTO), on_click=lambda e: _cerrar_dialogo(e.page))],
     )
     _abrir_dialogo(page, dialogo)
 
@@ -919,7 +1436,7 @@ def abrir_dialogo_manual(page: ft.Page):
         bgcolor=COLOR_CARD,
         title=ft.Text("Manual de usuario", size=18, weight="w600", color=COLOR_TEXTO),
         content=ft.Container(content=contenido, width=400, bgcolor=COLOR_CARD),
-        actions=[ft.TextButton(content=ft.Text("Cerrar", color=COLOR_CANCELAR, weight=ft.FontWeight.W_500), style=ft.ButtonStyle(color=COLOR_CANCELAR), on_click=lambda e: _cerrar_dialogo(e.page))],
+        actions=[ft.TextButton(content=ft.Text("Cerrar", color=COLOR_TEXTO, weight=ft.FontWeight.W_500), style=ft.ButtonStyle(color=COLOR_TEXTO), on_click=lambda e: _cerrar_dialogo(e.page))],
     )
     _abrir_dialogo(page, dialogo)
 
@@ -929,7 +1446,7 @@ def abrir_dialogo_legal(page: ft.Page):
         [
             ft.Text("Términos de uso, licencias y créditos del sistema.", size=13, color=COLOR_TEXTO_SEC),
             ft.Container(height=12),
-            ft.Text("SGB — Uso institucional. Consulte con la entidad responsable.", size=13, color=COLOR_TEXTO_SEC),
+            ft.Text("SBE — Uso institucional. Consulte con la entidad responsable.", size=13, color=COLOR_TEXTO_SEC),
         ],
         spacing=0,
     )
@@ -938,7 +1455,7 @@ def abrir_dialogo_legal(page: ft.Page):
         bgcolor=COLOR_CARD,
         title=ft.Text("Información legal", size=18, weight="w600", color=COLOR_TEXTO),
         content=ft.Container(content=contenido, width=400, bgcolor=COLOR_CARD),
-        actions=[ft.TextButton(content=ft.Text("Cerrar", color=COLOR_CANCELAR, weight=ft.FontWeight.W_500), style=ft.ButtonStyle(color=COLOR_CANCELAR), on_click=lambda e: _cerrar_dialogo(e.page))],
+        actions=[ft.TextButton(content=ft.Text("Cerrar", color=COLOR_TEXTO, weight=ft.FontWeight.W_500), style=ft.ButtonStyle(color=COLOR_TEXTO), on_click=lambda e: _cerrar_dialogo(e.page))],
     )
     _abrir_dialogo(page, dialogo)
 
@@ -957,6 +1474,904 @@ def abrir_dialogo_importar_bd(page: ft.Page):
         bgcolor=COLOR_CARD,
         title=ft.Text("Importar / restaurar BD", size=18, weight="w600", color=COLOR_TEXTO),
         content=ft.Container(content=contenido, width=400, bgcolor=COLOR_CARD),
-        actions=[ft.TextButton(content=ft.Text("Cerrar", color=COLOR_CANCELAR, weight=ft.FontWeight.W_500), style=ft.ButtonStyle(color=COLOR_CANCELAR), on_click=lambda e: _cerrar_dialogo(e.page))],
+        actions=[ft.TextButton(content=ft.Text("Cerrar", color=COLOR_TEXTO, weight=ft.FontWeight.W_500), style=ft.ButtonStyle(color=COLOR_TEXTO), on_click=lambda e: _cerrar_dialogo(e.page))],
+    )
+    _abrir_dialogo(page, dialogo)
+
+
+# ---------- Nuevo Turno (Figma) ----------
+def abrir_form_turno(page: ft.Page):
+    """Formulario de nuevo turno con DatePicker y TimePicker nativos + conexión a BD."""
+    import database.crud_turno as crud_turno
+    from datetime import datetime, date, time
+    from database.crud_usuario import es_admin
+
+    # Obtener el usuario_actual
+    import json
+    try:
+        user_raw = page.client_storage.get("usuario_actual")
+        usuario_actual = page.data.get("usuario_actual") if getattr(page, "data", None) and getattr(page.data, "get", None) else None
+        if not usuario_actual and user_raw:
+            usuario_actual = json.loads(user_raw) if isinstance(user_raw, str) else (user_raw or {})
+    except Exception:
+        usuario_actual = {}
+        
+    usuario_actual = usuario_actual or {}
+    rol_actual = usuario_actual.get("rol", "")
+    brigada_rol_id = usuario_actual.get("Brigada_idBrigada") if not es_admin(rol_actual) else None
+
+    # ── Dropdown de brigadas reales ──
+    brigadas_bd = listar_brigadas((page.data or {}).get("brigada_activa"), brigada_rol_id=brigada_rol_id)
+    opciones_brigadas = [ft.dropdown.Option(str(bg["idBrigada"]), bg["nombre_brigada"]) for bg in brigadas_bd]
+
+    brigada = ft.Dropdown(
+        hint_text="Seleccione una brigada",
+        hint_style=ft.TextStyle(size=14, color=COLOR_TEXTO_SEC),
+        text_style=ft.TextStyle(size=14, color=COLOR_TEXTO),
+        options=opciones_brigadas,
+        border_color=COLOR_BORDE,
+        focused_border_color=COLOR_PRIMARIO,
+        border_radius=RADIO,
+        color=COLOR_TEXTO,
+        content_padding=_CAMPO_PADDING,
+    )
+
+    # ── Estado interno para fecha y horas seleccionadas ──
+    _fecha_sel = {"valor": None}    # date | None
+    _hora_ini_sel = {"valor": None} # time | None
+    _hora_fin_sel = {"valor": None} # time | None
+
+    # ── Textos que muestran la selección ──
+    texto_fecha = ft.Text("Seleccionar fecha…", size=14, color=COLOR_TEXTO_SEC, expand=True)
+    texto_hora_ini = ft.Text("--:--", size=14, color=COLOR_TEXTO_SEC, expand=True)
+    texto_hora_fin = ft.Text("--:--", size=14, color=COLOR_TEXTO_SEC, expand=True)
+
+    # ── DatePicker (vía overlay para no reemplazar el diálogo del form) ──
+    def _on_fecha_change(e):
+        picked = e.control.value
+        if picked:
+            if isinstance(picked, datetime):
+                picked = picked.date()
+            _fecha_sel["valor"] = picked
+            _MESES = {1:"Ene",2:"Feb",3:"Mar",4:"Abr",5:"May",6:"Jun",7:"Jul",8:"Ago",9:"Sep",10:"Oct",11:"Nov",12:"Dic"}
+            texto_fecha.value = f"{picked.day:02d}/{_MESES.get(picked.month,'')}/{picked.year}"
+            texto_fecha.color = COLOR_TEXTO
+            page.update()
+
+    date_picker = ft.DatePicker(
+        first_date=date(2024, 1, 1),
+        last_date=date(2030, 12, 31),
+        on_change=_on_fecha_change,
+    )
+
+    # ── TimePicker — Hora Inicio (vía overlay) ──
+    def _on_hora_ini_change(e):
+        picked = e.control.value
+        if picked:
+            _hora_ini_sel["valor"] = picked
+            texto_hora_ini.value = f"{picked.hour:02d}:{picked.minute:02d}"
+            texto_hora_ini.color = COLOR_TEXTO
+            page.update()
+
+    time_picker_ini = ft.TimePicker(
+        on_change=_on_hora_ini_change,
+    )
+
+    # ── TimePicker — Hora Fin (vía overlay) ──
+    def _on_hora_fin_change(e):
+        picked = e.control.value
+        if picked:
+            _hora_fin_sel["valor"] = picked
+            texto_hora_fin.value = f"{picked.hour:02d}:{picked.minute:02d}"
+            texto_hora_fin.color = COLOR_TEXTO
+            page.update()
+
+    time_picker_fin = ft.TimePicker(
+        on_change=_on_hora_fin_change,
+    )
+
+    # Registrar pickers en overlay (para que no reemplacen el diálogo del formulario)
+    page.overlay.append(date_picker)
+    page.overlay.append(time_picker_ini)
+    page.overlay.append(time_picker_fin)
+
+    def _abrir_fecha(_):
+        date_picker.open = True
+        page.update()
+
+    def _abrir_hora_ini(_):
+        time_picker_ini.open = True
+        page.update()
+
+    def _abrir_hora_fin(_):
+        time_picker_fin.open = True
+        page.update()
+
+    def _limpiar_overlay():
+        """Remueve los pickers del overlay al cerrar el formulario."""
+        for p in (date_picker, time_picker_ini, time_picker_fin):
+            if p in page.overlay:
+                page.overlay.remove(p)
+
+    boton_fecha = ft.Container(
+        content=ft.Row(
+            [
+                ft.Icon(ft.Icons.CALENDAR_MONTH_ROUNDED, size=20, color=COLOR_PRIMARIO),
+                ft.Container(width=8),
+                texto_fecha,
+                ft.Icon(ft.Icons.ARROW_DROP_DOWN, size=20, color=COLOR_TEXTO_SEC),
+            ],
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        ),
+        padding=ft.Padding(14, 12, 14, 12),
+        border=ft.Border.all(1, COLOR_BORDE),
+        border_radius=RADIO,
+        bgcolor=COLOR_CARD,
+        on_click=_abrir_fecha,
+        ink=True,
+    )
+
+    boton_hora_ini = ft.Container(
+        content=ft.Row(
+            [
+                ft.Icon(ft.Icons.ACCESS_TIME_ROUNDED, size=18, color=COLOR_PRIMARIO),
+                ft.Container(width=6),
+                texto_hora_ini,
+                ft.Icon(ft.Icons.ARROW_DROP_DOWN, size=18, color=COLOR_TEXTO_SEC),
+            ],
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        ),
+        padding=ft.Padding(14, 12, 14, 12),
+        border=ft.Border.all(1, COLOR_BORDE),
+        border_radius=RADIO,
+        bgcolor=COLOR_CARD,
+        on_click=_abrir_hora_ini,
+        ink=True,
+        expand=True,
+    )
+
+    boton_hora_fin = ft.Container(
+        content=ft.Row(
+            [
+                ft.Icon(ft.Icons.ACCESS_TIME_ROUNDED, size=18, color=COLOR_PRIMARIO),
+                ft.Container(width=6),
+                texto_hora_fin,
+                ft.Icon(ft.Icons.ARROW_DROP_DOWN, size=18, color=COLOR_TEXTO_SEC),
+            ],
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        ),
+        padding=ft.Padding(14, 12, 14, 12),
+        border=ft.Border.all(1, COLOR_BORDE),
+        border_radius=RADIO,
+        bgcolor=COLOR_CARD,
+        on_click=_abrir_hora_fin,
+        ink=True,
+        expand=True,
+    )
+
+    # ── Fila de horas ──
+    fila_horas = ft.Row(
+        [
+            ft.Column([ft.Text("Hora Inicio", size=14, weight="w500", color=COLOR_TEXTO), ft.Container(height=8), boton_hora_ini], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.START, expand=True),
+            ft.Container(width=16),
+            ft.Column([ft.Text("Hora Fin", size=14, weight="w500", color=COLOR_TEXTO), ft.Container(height=8), boton_hora_fin], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.START, expand=True),
+        ],
+        spacing=0,
+    )
+
+    ubicacion = ft.TextField(hint_text="Ubicación del turno", **_CAMPO_BASE)
+    notas = ft.TextField(
+        hint_text="Detalles adicionales del turno...",
+        multiline=True,
+        min_lines=3,
+        max_lines=5,
+        **_CAMPO_BASE,
+    )
+
+    contenido = ft.Column(
+        [
+            _campo_con_titulo("Brigada", brigada),
+            _campo_con_titulo("Fecha", boton_fecha),
+            fila_horas,
+            ft.Container(height=16),
+            _campo_con_titulo("Ubicación", ubicacion),
+            _campo_con_titulo("Notas", notas, espaciado_abajo=0),
+        ],
+        spacing=0,
+    )
+
+    def on_crear(_):
+        # ── Validaciones ──
+        errores = []
+        if not brigada.value:
+            errores.append("Seleccione una brigada.")
+        if not _fecha_sel["valor"]:
+            errores.append("Seleccione una fecha.")
+        if not _hora_ini_sel["valor"]:
+            errores.append("Seleccione hora de inicio.")
+        if not _hora_fin_sel["valor"]:
+            errores.append("Seleccione hora de fin.")
+        if _hora_ini_sel["valor"] and _hora_fin_sel["valor"]:
+            if _hora_fin_sel["valor"] <= _hora_ini_sel["valor"]:
+                errores.append("La hora de fin debe ser posterior a la hora de inicio.")
+
+        if errores:
+            page.snack_bar = ft.SnackBar(ft.Text(" | ".join(errores), color=COLOR_TEXTO), bgcolor=COLOR_CARD)
+            page.snack_bar.open = True
+            page.update()
+            return
+
+        # ── Insertar en BD ──
+        fecha_str = _fecha_sel["valor"].strftime("%Y-%m-%d")
+        hora_ini_str = f"{_hora_ini_sel['valor'].hour:02d}:{_hora_ini_sel['valor'].minute:02d}:00"
+        hora_fin_str = f"{_hora_fin_sel['valor'].hour:02d}:{_hora_fin_sel['valor'].minute:02d}:00"
+
+        try:
+            lid = crud_turno.crear_turno(
+                brigada_id=int(brigada.value),
+                fecha=fecha_str,
+                hora_inicio=hora_ini_str,
+                hora_fin=hora_fin_str,
+                ubicacion=(ubicacion.value or "").strip(),
+                notas=(notas.value or "").strip(),
+            )
+            if lid:
+                _limpiar_overlay()
+                page.pop_dialog()
+                page.snack_bar = ft.SnackBar(ft.Text("Turno creado con éxito ✓", color="white"), bgcolor=COLOR_PRIMARIO)
+            else:
+                page.snack_bar = ft.SnackBar(ft.Text("Error al guardar el turno en la base de datos.", color="white"), bgcolor="#ef4444")
+        except Exception as err:
+            page.snack_bar = ft.SnackBar(ft.Text(f"Error: {err}", color="white"), bgcolor="#ef4444")
+
+        page.snack_bar.open = True
+        page.update()
+
+    def _cerrar_form(e):
+        _limpiar_overlay()
+        _cerrar_dialogo(e.page if hasattr(e, 'page') else page)
+
+    dialogo = ft.AlertDialog(
+        modal=True,
+        bgcolor=COLOR_CARD,
+        title=ft.Row(
+            [
+                ft.Text("Nuevo Turno", size=18, weight="w600", color=COLOR_TEXTO),
+                ft.Container(expand=True),
+                ft.IconButton(icon=ft.Icons.CLOSE, on_click=_cerrar_form),
+            ],
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+        ),
+        content=ft.Container(
+            content=ft.Column([contenido], scroll=ft.ScrollMode.AUTO, tight=True),
+            width=ANCHO_FORM,
+            height=ALTURA_MAX_FORM,
+            bgcolor=COLOR_CARD,
+        ),
+        actions=[
+            ft.TextButton(content=ft.Text("Cancelar", color=COLOR_TEXTO), style=ft.ButtonStyle(color=COLOR_TEXTO), on_click=_cerrar_form),
+            ft.FilledButton("Crear Turno", style=ft.ButtonStyle(bgcolor=COLOR_PRIMARIO, color="white"), on_click=on_crear),
+        ],
+    )
+    page.show_dialog(dialogo)
+
+
+# ---------- Nuevo Reporte de Incidente (Figma) ----------
+def abrir_form_nuevo_reporte(page: ft.Page):
+    """Cada campo con su título visible."""
+    import database.crud_reporte as crud_reporte
+    from database.crud_usuario import es_admin
+
+    import json
+    try:
+        user_raw = page.client_storage.get("usuario_actual")
+        usuario_actual = page.data.get("usuario_actual") if getattr(page, "data", None) and getattr(page.data, "get", None) else None
+        if not usuario_actual and user_raw:
+            usuario_actual = json.loads(user_raw) if isinstance(user_raw, str) else (user_raw or {})
+    except Exception:
+        usuario_actual = {}
+        
+    usuario_actual = usuario_actual or {}
+    rol_actual = usuario_actual.get("rol", "")
+    brigada_rol_id = usuario_actual.get("Brigada_idBrigada") if not es_admin(rol_actual) else None
+    
+    # Cargar brigadas reales
+    brigadas_bd = listar_brigadas((page.data or {}).get("brigada_activa"), brigada_rol_id=brigada_rol_id)
+    opciones_brigadas = []
+    for bg in brigadas_bd:
+        opciones_brigadas.append(ft.dropdown.Option(str(bg["idBrigada"]), bg["nombre_brigada"]))
+
+    titulo_inc = ft.TextField(hint_text="Resumen breve del incidente", **_CAMPO_BASE)
+    desc = ft.TextField(
+        hint_text="Describe lo sucedido con detalle...",
+        hint_style=ft.TextStyle(size=14, color=COLOR_TEXTO_SEC),
+        multiline=True,
+        min_lines=3,
+        max_lines=6,
+        content_padding=ft.Padding(14, 20),
+        border_color=COLOR_BORDE,
+        focused_border_color=COLOR_PRIMARIO,
+        border_radius=RADIO,
+        text_size=14,
+        color=COLOR_TEXTO,
+        cursor_color=COLOR_PRIMARIO,
+    )
+    brigada = ft.Dropdown(
+        hint_text="Seleccione una brigada",
+        hint_style=ft.TextStyle(size=14, color=COLOR_TEXTO_SEC),
+        text_style=ft.TextStyle(size=14, color=COLOR_TEXTO),
+        options=opciones_brigadas,
+        border_color=COLOR_BORDE,
+        focused_border_color=COLOR_PRIMARIO,
+        border_radius=RADIO,
+        color=COLOR_TEXTO,
+        content_padding=_CAMPO_PADDING,
+    )
+    ubicacion = ft.TextField(hint_text="Lugar donde ocurrió el incidente", **_CAMPO_BASE)
+    severidad = ft.Dropdown(
+        hint_text="Seleccione severidad",
+        hint_style=ft.TextStyle(size=14, color=COLOR_TEXTO_SEC),
+        text_style=ft.TextStyle(size=14, color=COLOR_TEXTO),
+        options=[
+            ft.dropdown.Option("Baja"),
+            ft.dropdown.Option("Media"),
+            ft.dropdown.Option("Alta"),
+        ],
+        border_color=COLOR_BORDE,
+        focused_border_color=COLOR_PRIMARIO,
+        border_radius=RADIO,
+        color=COLOR_TEXTO,
+        content_padding=_CAMPO_PADDING,
+    )
+
+    contenido = ft.Column(
+        [
+            _campo_con_titulo("Título del Incidente", titulo_inc),
+            _campo_con_titulo("Descripción Detallada", desc),
+            _campo_con_titulo("Brigada Involucrada", brigada),
+            _campo_con_titulo("Ubicación", ubicacion),
+            _campo_con_titulo("Severidad", severidad, espaciado_abajo=0),
+        ],
+        spacing=0,
+    )
+
+    def on_crear(_):
+        if not all([titulo_inc.value, desc.value, brigada.value, ubicacion.value, severidad.value]):
+            page.snack_bar = ft.SnackBar(ft.Text("Por favor complete todos los campos", color=COLOR_TEXTO), bgcolor=COLOR_CARD)
+            page.snack_bar.open = True
+            page.update()
+            return
+
+        crud_reporte.crear_reporte(
+            titulo=titulo_inc.value, 
+            descripcion=desc.value, 
+            ubicacion=ubicacion.value, 
+            prioridad=severidad.value, 
+            brigada_id=int(brigada.value)
+        )
+        
+        page.pop_dialog()
+        page.snack_bar = ft.SnackBar(ft.Text("Reporte creado con éxito", color="white"), bgcolor=COLOR_PRIMARIO)
+        page.snack_bar.open = True
+        page.update()
+
+    dialogo = ft.AlertDialog(
+        modal=True,
+        bgcolor=COLOR_CARD,
+        title=ft.Text("Nuevo Reporte de Incidente", size=18, weight="w600", color=COLOR_TEXTO),
+        content=ft.Container(
+            content=ft.Column([contenido], scroll=ft.ScrollMode.AUTO, tight=True),
+            width=ANCHO_FORM,
+            height=ALTURA_MAX_FORM,
+            bgcolor=COLOR_CARD,
+        ),
+        actions=[
+            ft.TextButton(content=ft.Text("Cancelar", color=COLOR_TEXTO), style=ft.ButtonStyle(color=COLOR_TEXTO), on_click=lambda e: _cerrar_dialogo(e.page)),
+            ft.FilledButton("Crear Reporte", style=ft.ButtonStyle(bgcolor=COLOR_PRIMARIO, color="white"), on_click=on_crear),
+        ],
+    )
+    page.show_dialog(dialogo)
+
+# ==============================================================================
+# FORMULARIOS: REPORTES DE ACTIVIDADES E IMPACTO
+# ==============================================================================
+
+def modal_nuevo_reporte_actividad(page: ft.Page, id_usuario_actual: int, on_success_callback=None):
+    from database import crud_actividad, crud_reporte
+    
+    # Obtener actividades para el dropdown
+    actividades = crud_actividad.listar_actividades()
+    opciones_actividades = [ft.dropdown.Option(str(a["id"]), a["titulo"]) for a in actividades]
+    
+    actividad_dd = ft.Dropdown(
+        hint_text="Seleccione la actividad",
+        hint_style=ft.TextStyle(size=14, color=ft.Colors.with_opacity(0.7, COLOR_TEXTO)),
+        text_style=ft.TextStyle(size=14, color=COLOR_TEXTO),
+        options=opciones_actividades,
+        border_color=COLOR_BORDE,
+        focused_border_color=COLOR_PRIMARIO,
+        border_radius=RADIO,
+        color=COLOR_TEXTO,
+        content_padding=_CAMPO_PADDING,
+    )
+    participantes_tf = ft.TextField(
+        hint_text="Ej. 25 estudiantes, 2 profesores",
+        **_CAMPO_BASE,
+    )
+    observaciones = _campo_texto("Observaciones", "Resumen de lo ocurrido durante la actividad...", multiline=True)
+    observaciones.min_lines = 3
+    observaciones.max_lines = 5
+    observaciones.hint_style = ft.TextStyle(size=14, color=ft.Colors.with_opacity(0.7, COLOR_TEXTO))
+    
+    resultado = _campo_texto("Estado Final", "Ej. Completado con éxito", multiline=True)
+    resultado.min_lines = 2
+    resultado.max_lines = 3
+    resultado.hint_style = ft.TextStyle(size=14, color=ft.Colors.with_opacity(0.7, COLOR_TEXTO))
+    
+    contenido = ft.Column(
+        [
+            _campo_con_titulo("Actividad Realizada", actividad_dd),
+            _campo_con_titulo("Participantes", participantes_tf),
+            _campo_con_titulo("Observaciones", observaciones),
+            _campo_con_titulo("Estado Final (Resultado)", resultado, espaciado_abajo=0),
+        ],
+        spacing=0,
+    )
+
+    def on_crear(e):
+        if not actividad_dd.value or not observaciones.value or not resultado.value:
+            setattr(page, 'snack_bar', ft.SnackBar(ft.Text("Actividad, observaciones y estado final son obligatorios."), bgcolor=ft.Colors.RED))
+            setattr(page.snack_bar, 'open', True)
+            page.update()
+            return
+            
+        lid = crud_reporte.crear_reporte_actividad(
+            resumen=observaciones.value,
+            resultado=resultado.value,
+            actividad_id=int(actividad_dd.value),
+            usuario_id=id_usuario_actual,
+            participantes=(participantes_tf.value or "").strip(),
+        )
+        
+        if lid:
+            setattr(page, 'snack_bar', ft.SnackBar(ft.Text("Reporte de actividad guardado correctamente."), bgcolor=ft.Colors.GREEN))
+            _cerrar_dialogo(page)
+            if on_success_callback: on_success_callback()
+        else:
+            setattr(page, 'snack_bar', ft.SnackBar(ft.Text("Error en BD al guardar el reporte."), bgcolor=ft.Colors.RED))
+        
+        setattr(page.snack_bar, 'open', True)
+        page.update()
+
+    dialogo = ft.AlertDialog(
+        modal=True,
+        bgcolor=COLOR_CARD,
+        title=ft.Text("Nuevo Reporte de Actividad", size=18, weight="w600", color=COLOR_TEXTO),
+        content=ft.Container(
+            content=ft.Column([contenido], scroll=ft.ScrollMode.AUTO, tight=True),
+            width=ANCHO_FORM, height=ALTURA_MAX_FORM, bgcolor=COLOR_CARD,
+        ),
+        actions=[
+            ft.TextButton("Cancelar", on_click=lambda e: _cerrar_dialogo(page), style=ft.ButtonStyle(color=COLOR_TEXTO)),
+            ft.FilledButton("Guardar Reporte", on_click=on_crear, style=ft.ButtonStyle(bgcolor=COLOR_PRIMARIO, color="white")),
+        ],
+    )
+    page.show_dialog(dialogo)
+
+def modal_nuevo_reporte_impacto(page: ft.Page, id_usuario_actual: int, on_success_callback=None):
+    from database import crud_actividad, crud_reporte
+    from database.crud_usuario import es_admin
+    
+    import json
+    try:
+        user_raw = page.client_storage.get("usuario_actual")
+        usuario_actual = page.data.get("usuario_actual") if getattr(page, "data", None) and getattr(page.data, "get", None) else None
+        if not usuario_actual and user_raw:
+            usuario_actual = json.loads(user_raw) if isinstance(user_raw, str) else (user_raw or {})
+    except Exception:
+        usuario_actual = {}
+        
+    usuario_actual = usuario_actual or {}
+    rol_actual = usuario_actual.get("rol", "")
+    brigada_rol_id = usuario_actual.get("Brigada_idBrigada") if not es_admin(rol_actual) else None
+    
+    # Brigadas reales
+    brigadas_bd = listar_brigadas((page.data or {}).get("brigada_activa"), brigada_rol_id=brigada_rol_id)
+    opciones_brigadas = [ft.dropdown.Option(str(bg["idBrigada"]), bg["nombre_brigada"]) for bg in brigadas_bd]
+
+    brigada_dd = ft.Dropdown(
+        hint_text="Seleccione la brigada",
+        hint_style=ft.TextStyle(size=14, color=ft.Colors.with_opacity(0.7, COLOR_TEXTO)),
+        text_style=ft.TextStyle(size=14, color=COLOR_TEXTO),
+        options=opciones_brigadas,
+        border_color=COLOR_BORDE,
+        focused_border_color=COLOR_PRIMARIO,
+        border_radius=RADIO,
+        color=COLOR_TEXTO,
+        content_padding=_CAMPO_PADDING,
+    )
+    area_evaluada_tf = ft.TextField(
+        hint_text="Ej. Patio central, Zona de recreo",
+        **_CAMPO_BASE,
+    )
+    indicador_tf = ft.TextField(
+        hint_text="Ej. Residuos recolectados, Horas de vigilancia",
+        **_CAMPO_BASE,
+    )
+    # Valor y Unidad en fila
+    valor_tf = ft.TextField(
+        hint_text="Ej. 120",
+        **_CAMPO_BASE,
+    )
+    unidad_tf = ft.TextField(
+        hint_text="Ej. kg, horas, unidades",
+        **_CAMPO_BASE,
+    )
+    descripcion_impacto = _campo_texto("Descripción", "Análisis del impacto observado...", multiline=True)
+    descripcion_impacto.min_lines = 3
+    descripcion_impacto.max_lines = 6
+    descripcion_impacto.hint_style = ft.TextStyle(size=14, color=ft.Colors.with_opacity(0.7, COLOR_TEXTO))
+
+    # Actividad asociada (opcional)
+    actividades = crud_actividad.listar_actividades()
+    opciones_actividades = [ft.dropdown.Option("", "— Ninguna —")] + [
+        ft.dropdown.Option(str(a["id"]), a["titulo"]) for a in actividades
+    ]
+    actividad_dd = ft.Dropdown(
+        hint_text="Opcional",
+        hint_style=ft.TextStyle(size=14, color=ft.Colors.with_opacity(0.7, COLOR_TEXTO)),
+        text_style=ft.TextStyle(size=14, color=COLOR_TEXTO),
+        options=opciones_actividades,
+        border_color=COLOR_BORDE,
+        focused_border_color=COLOR_PRIMARIO,
+        border_radius=RADIO,
+        color=COLOR_TEXTO,
+        content_padding=_CAMPO_PADDING,
+    )
+
+    fila_valor_unidad = ft.Row(
+        [
+            ft.Column(
+                [ft.Text("Valor", size=14, weight="w500", color=COLOR_TEXTO), ft.Container(height=8), valor_tf],
+                spacing=0, expand=True,
+            ),
+            ft.Container(width=16),
+            ft.Column(
+                [ft.Text("Unidad", size=14, weight="w500", color=COLOR_TEXTO), ft.Container(height=8), unidad_tf],
+                spacing=0, expand=True,
+            ),
+        ],
+        spacing=0,
+    )
+
+    contenido_modal = ft.Column(
+        [
+            _campo_con_titulo("Brigada", brigada_dd),
+            _campo_con_titulo("Área Evaluada", area_evaluada_tf),
+            _campo_con_titulo("Indicador", indicador_tf),
+            fila_valor_unidad,
+            ft.Container(height=16),
+            _campo_con_titulo("Descripción del Impacto", descripcion_impacto),
+            _campo_con_titulo("Actividad Asociada (opcional)", actividad_dd, espaciado_abajo=0),
+        ],
+        spacing=0,
+    )
+
+    def on_crear(e):
+        if not brigada_dd.value or not area_evaluada_tf.value or not indicador_tf.value:
+            setattr(page, 'snack_bar', ft.SnackBar(ft.Text("Brigada, área evaluada e indicador son obligatorios."), bgcolor=ft.Colors.RED))
+            setattr(page.snack_bar, 'open', True)
+            page.update()
+            return
+
+        # Resolver nombre de brigada a texto
+        brigada_nombre = ""
+        for bg in brigadas_bd:
+            if str(bg["idBrigada"]) == brigada_dd.value:
+                brigada_nombre = bg["nombre_brigada"]
+                break
+
+        act_id = None
+        if actividad_dd.value and actividad_dd.value.strip():
+            try:
+                act_id = int(actividad_dd.value)
+            except ValueError:
+                act_id = None
+
+        lid = crud_reporte.crear_reporte_impacto(
+            usuario_id=id_usuario_actual,
+            brigada=brigada_nombre,
+            area_evaluada=(area_evaluada_tf.value or "").strip(),
+            indicador=(indicador_tf.value or "").strip(),
+            valor=(valor_tf.value or "").strip(),
+            unidad=(unidad_tf.value or "").strip(),
+            contenido=(descripcion_impacto.value or "").strip(),
+            actividad_id=act_id,
+        )
+        
+        if lid:
+            setattr(page, 'snack_bar', ft.SnackBar(ft.Text("Reporte de impacto guardado correctamente."), bgcolor=ft.Colors.GREEN))
+            _cerrar_dialogo(page)
+            if on_success_callback: on_success_callback()
+        else:
+            setattr(page, 'snack_bar', ft.SnackBar(ft.Text("Error en BD al guardar el reporte."), bgcolor=ft.Colors.RED))
+        
+        setattr(page.snack_bar, 'open', True)
+        page.update()
+
+    dialogo = ft.AlertDialog(
+        modal=True,
+        bgcolor=COLOR_CARD,
+        title=ft.Text("Nuevo Reporte de Impacto", size=18, weight="w600", color=COLOR_TEXTO),
+        content=ft.Container(
+            content=ft.Column([contenido_modal], scroll=ft.ScrollMode.AUTO, tight=True),
+            width=ANCHO_FORM, height=ALTURA_MAX_FORM, bgcolor=COLOR_CARD,
+        ),
+        actions=[
+            ft.TextButton("Cancelar", on_click=lambda e: _cerrar_dialogo(page), style=ft.ButtonStyle(color=COLOR_TEXTO)),
+            ft.FilledButton("Guardar Reporte", on_click=on_crear, style=ft.ButtonStyle(bgcolor=COLOR_PRIMARIO, color="white")),
+        ],
+    )
+    page.show_dialog(dialogo)
+
+
+# ---------- Profesor — Registro y Asignación (v2) ----------
+
+
+def abrir_form_profesor_registrar(page: ft.Page, on_success=None):
+    """
+    Formulario para que un Directivo registre un nuevo Profesor.
+    Auto-inyecta institucion_id desde la sesión.
+    Opcionalmente permite asignar brigada inmediatamente.
+    """
+    from database.crud_usuario import crear_profesor_institucional
+    from database.crud_brigada import listar_brigadas_por_institucion
+
+    usuario_actual = {}
+    try:
+        if getattr(page, "data", None) and isinstance(page.data.get("usuario_actual"), dict):
+            usuario_actual = page.data["usuario_actual"]
+    except Exception:
+        pass
+    institucion_id = usuario_actual.get("institucion_id")
+    if not institucion_id:
+        page.snack_bar = ft.SnackBar(ft.Text("No se encontró la institución del usuario actual."), bgcolor="#ef4444")
+        page.snack_bar.open = True
+        page.update()
+        return
+
+    # Campos del formulario
+    nombre = _campo_texto("Nombre *", "Nombre del profesor")
+    apellido = _campo_texto("Apellido *", "Apellido del profesor")
+    cedula = _campo_texto("Cédula", "V-12345678")
+    email = _campo_texto("Correo electrónico *", "profesor@correo.com")
+    usuario_str = _campo_texto("Usuario *", "nombre_usuario")
+    contrasena = _campo_texto("Contraseña *", "Mínimo 6 caracteres", password=True)
+    confirmar = _campo_texto("Confirmar contraseña *", "", password=True)
+
+    # Dropdown de brigadas sin profesor
+    try:
+        brigadas_disp = listar_brigadas_por_institucion(institucion_id, solo_sin_profesor=True)
+    except Exception:
+        brigadas_disp = []
+    opciones_brigada = [ft.dropdown.Option("", "— Sin asignar brigada —")]
+    for b in brigadas_disp:
+        opciones_brigada.append(ft.dropdown.Option(str(b["idBrigada"]), b.get("nombre_brigada", f"Brigada {b['idBrigada']}")))
+    dropdown_brigada = ft.Dropdown(
+        hint_text="Asignar a brigada (opcional)",
+        options=opciones_brigada,
+        border_color=COLOR_BORDE,
+        focused_border_color=COLOR_PRIMARIO,
+        text_size=14,
+        color=COLOR_TEXTO,
+        content_padding=ft.Padding(12, 14),
+        border_radius=RADIO,
+        dense=True,
+    )
+
+    def on_crear(_):
+        # Validaciones
+        if not nombre.value or not nombre.value.strip():
+            page.snack_bar = ft.SnackBar(ft.Text("El nombre es obligatorio."), bgcolor="#ef4444")
+            page.snack_bar.open = True; page.update(); return
+        if not apellido.value or not apellido.value.strip():
+            page.snack_bar = ft.SnackBar(ft.Text("El apellido es obligatorio."), bgcolor="#ef4444")
+            page.snack_bar.open = True; page.update(); return
+        if not email.value or not email.value.strip():
+            page.snack_bar = ft.SnackBar(ft.Text("El correo electrónico es obligatorio."), bgcolor="#ef4444")
+            page.snack_bar.open = True; page.update(); return
+        if not usuario_str.value or not usuario_str.value.strip():
+            page.snack_bar = ft.SnackBar(ft.Text("El usuario es obligatorio."), bgcolor="#ef4444")
+            page.snack_bar.open = True; page.update(); return
+        if not contrasena.value or len(contrasena.value) < 6:
+            page.snack_bar = ft.SnackBar(ft.Text("La contraseña debe tener al menos 6 caracteres."), bgcolor="#ef4444")
+            page.snack_bar.open = True; page.update(); return
+        if contrasena.value != confirmar.value:
+            page.snack_bar = ft.SnackBar(ft.Text("Las contraseñas no coinciden."), bgcolor="#ef4444")
+            page.snack_bar.open = True; page.update(); return
+        if email_ya_existe(email.value.strip().lower()):
+            page.snack_bar = ft.SnackBar(ft.Text("Ese correo ya está registrado."), bgcolor="#ef4444")
+            page.snack_bar.open = True; page.update(); return
+
+        brigada_id = None
+        if dropdown_brigada.value and dropdown_brigada.value.strip():
+            try:
+                brigada_id = int(dropdown_brigada.value)
+            except (ValueError, TypeError):
+                brigada_id = None
+
+        try:
+            crear_profesor_institucional(
+                nombre=nombre.value.strip(),
+                apellido=apellido.value.strip(),
+                email=email.value.strip().lower(),
+                contrasena_plana=contrasena.value,
+                usuario_str=usuario_str.value.strip().lower(),
+                cedula=(cedula.value or "").strip() or None,
+                institucion_id=institucion_id,
+                brigada_id=brigada_id,
+            )
+            _cerrar_dialogo(page)
+            page.snack_bar = ft.SnackBar(ft.Text("¡Profesor registrado correctamente!"), bgcolor="#22c55e")
+            page.snack_bar.open = True
+            if on_success:
+                on_success()
+        except Exception as ex:
+            page.snack_bar = ft.SnackBar(ft.Text(f"Error: {ex}"), bgcolor="#ef4444")
+            page.snack_bar.open = True
+        page.update()
+
+    contenido = ft.Container(
+        content=ft.Column(
+            [
+                _campo_con_titulo("Nombre *", nombre),
+                _campo_con_titulo("Apellido *", apellido),
+                _campo_con_titulo("Cédula", cedula),
+                _campo_con_titulo("Correo electrónico *", email),
+                _campo_con_titulo("Usuario *", usuario_str),
+                _campo_con_titulo("Contraseña *", contrasena),
+                _campo_con_titulo("Confirmar contraseña *", confirmar),
+                ft.Container(height=8),
+                _campo_con_titulo("Asignar a brigada (opcional)", dropdown_brigada),
+            ],
+            spacing=0,
+        ),
+        padding=PADDING,
+        width=ANCHO_FORM,
+    )
+
+    dialogo = ft.AlertDialog(
+        modal=True,
+        bgcolor=COLOR_CARD,
+        title=ft.Text("Registrar Profesor", size=18, weight="w600", color=COLOR_TEXTO),
+        content=ft.Container(
+            content=ft.Column([contenido], scroll=ft.ScrollMode.AUTO, tight=True),
+            width=ANCHO_FORM, height=ALTURA_MAX_FORM, bgcolor=COLOR_CARD,
+        ),
+        actions=[
+            ft.TextButton("Cancelar", on_click=lambda e: _cerrar_dialogo(page), style=ft.ButtonStyle(color=COLOR_TEXTO)),
+            ft.FilledButton("Registrar", on_click=on_crear, style=ft.ButtonStyle(bgcolor=COLOR_PRIMARIO, color="white")),
+        ],
+    )
+    _abrir_dialogo(page, dialogo)
+
+
+def abrir_form_asignar_profesor_brigada(page: ft.Page, brigada: dict, on_success=None):
+    """
+    Formulario para asignar o reemplazar profesor responsable de una brigada.
+    Si la brigada ya tiene profesor, muestra opción de reemplazo con confirmación.
+    """
+    from database.crud_usuario import listar_profesores_institucion
+    from database.crud_brigada import asignar_profesor_a_brigada, reemplazar_profesor_brigada
+
+    usuario_actual = {}
+    try:
+        if getattr(page, "data", None) and isinstance(page.data.get("usuario_actual"), dict):
+            usuario_actual = page.data["usuario_actual"]
+    except Exception:
+        pass
+    institucion_id = usuario_actual.get("institucion_id")
+    if not institucion_id:
+        page.snack_bar = ft.SnackBar(ft.Text("No se encontró la institución del usuario actual."), bgcolor="#ef4444")
+        page.snack_bar.open = True
+        page.update()
+        return
+
+    brigada_id = brigada.get("idBrigada")
+    profesor_actual = brigada.get("profesor_id")
+    nombre_prof_actual = ""
+    if profesor_actual:
+        pnom = (brigada.get("profesor_nombre") or "").strip()
+        pap = (brigada.get("profesor_apellido") or "").strip()
+        nombre_prof_actual = f"{pnom} {pap}".strip() or f"ID {profesor_actual}"
+
+    # Cargar profesores sin brigada
+    try:
+        profesores_disp = listar_profesores_institucion(institucion_id, solo_sin_brigada=True)
+    except Exception:
+        profesores_disp = []
+
+    if not profesores_disp and not profesor_actual:
+        page.snack_bar = ft.SnackBar(ft.Text("No hay profesores disponibles sin brigada asignada."), bgcolor="#ef4444")
+        page.snack_bar.open = True
+        page.update()
+        return
+
+    opciones = [ft.dropdown.Option(str(p["idUsuario"]), f"{p.get('nombre', '')} {p.get('apellido', '')}") for p in profesores_disp]
+    dropdown_profesor = ft.Dropdown(
+        hint_text="Seleccione un profesor",
+        options=opciones,
+        border_color=COLOR_BORDE,
+        focused_border_color=COLOR_PRIMARIO,
+        text_size=14,
+        color=COLOR_TEXTO,
+        content_padding=ft.Padding(12, 14),
+        border_radius=RADIO,
+        dense=True,
+    )
+
+    info_actual = []
+    if profesor_actual:
+        info_actual = [
+            ft.Container(
+                content=ft.Column([
+                    ft.Text("Profesor actual:", size=13, weight="w500", color=COLOR_TEXTO_SEC),
+                    ft.Text(nombre_prof_actual, size=14, weight="w600", color=COLOR_TEXTO),
+                    ft.Text("Se reemplazará al asignar un nuevo profesor.", size=12, color="#ef4444", italic=True),
+                ], spacing=4),
+                padding=ft.Padding(12, 12, 12, 12),
+                border_radius=8,
+                bgcolor=ft.Colors.with_opacity(0.1, "#ef4444"),
+            ),
+            ft.Container(height=12),
+        ]
+
+    def on_asignar(_):
+        if not dropdown_profesor.value:
+            page.snack_bar = ft.SnackBar(ft.Text("Seleccione un profesor."), bgcolor="#ef4444")
+            page.snack_bar.open = True; page.update(); return
+        nuevo_id = int(dropdown_profesor.value)
+        try:
+            if profesor_actual:
+                reemplazar_profesor_brigada(brigada_id, nuevo_id)
+            else:
+                asignar_profesor_a_brigada(brigada_id, nuevo_id)
+            _cerrar_dialogo(page)
+            page.snack_bar = ft.SnackBar(ft.Text("¡Profesor asignado correctamente!"), bgcolor="#22c55e")
+            page.snack_bar.open = True
+            if on_success:
+                on_success()
+        except Exception as ex:
+            page.snack_bar = ft.SnackBar(ft.Text(f"Error: {ex}"), bgcolor="#ef4444")
+            page.snack_bar.open = True
+        page.update()
+
+    titulo = "Reemplazar Profesor Responsable" if profesor_actual else "Asignar Profesor Responsable"
+    btn_texto = "Reemplazar" if profesor_actual else "Asignar"
+
+    contenido = ft.Container(
+        content=ft.Column(
+            [
+                *info_actual,
+                _campo_con_titulo("Nuevo profesor *", dropdown_profesor),
+            ],
+            spacing=0,
+        ),
+        padding=PADDING,
+        width=ANCHO_FORM,
+    )
+
+    dialogo = ft.AlertDialog(
+        modal=True,
+        bgcolor=COLOR_CARD,
+        title=ft.Text(titulo, size=18, weight="w600", color=COLOR_TEXTO),
+        content=ft.Container(
+            content=ft.Column([contenido], scroll=ft.ScrollMode.AUTO, tight=True),
+            width=ANCHO_FORM, height=300, bgcolor=COLOR_CARD,
+        ),
+        actions=[
+            ft.TextButton("Cancelar", on_click=lambda e: _cerrar_dialogo(page), style=ft.ButtonStyle(color=COLOR_TEXTO)),
+            ft.FilledButton(btn_texto, on_click=on_asignar, style=ft.ButtonStyle(bgcolor=COLOR_PRIMARIO, color="white")),
+        ],
     )
     _abrir_dialogo(page, dialogo)

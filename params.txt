@@ -1,0 +1,1 @@
+self,label,icon,height,icon_margin,data,key,ref,expand,expand_loose,col,opacity,tooltip,badge,visible,disabled,rtl,adaptive

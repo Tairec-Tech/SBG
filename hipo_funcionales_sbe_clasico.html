@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HIPO Funcional Clásico - SBE</title>
+<style>
+  :root {
+    --bg: #f8fafc;
+    --sheet-bg: #ffffff;
+    --text: #0f172a;
+    --border: #1e293b;
+    --hover: #f1f5f9;
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--text);
+  }
+  .nav {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(255, 255, 255, 0.95);
+    border-bottom: 2px solid var(--border);
+    padding: 15px 30px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 15px;
+  }
+  .nav strong { font-size: 20px; font-weight: 800; text-transform: uppercase; }
+  .nav .links { display: flex; flex-wrap: wrap; gap: 6px; }
+  .nav a {
+    text-decoration: none; color: #334155; background: #e2e8f0;
+    padding: 6px 12px; font-size: 13px; font-weight: 700;
+    transition: all 0.2s; border: 1px solid var(--border);
+  }
+  .nav a:hover { background: var(--border); color: white; }
+
+  .sheet {
+    width: 95%; max-width: 1400px; margin: 40px auto;
+    background: var(--sheet-bg);
+    border: 2px solid var(--border);
+    box-shadow: 4px 4px 0px rgba(0,0,0,0.1);
+  }
+  .grid {
+    display: grid; grid-template-columns: 1fr 1.6fr 1.2fr;
+    min-height: 600px;
+  }
+  .col {
+    position: relative; border-right: 2px solid var(--border);
+    display: flex; flex-direction: column;
+  }
+  .col:last-child { border-right: none; }
+  .head {
+    text-align: center; font-size: 18px; font-weight: 800;
+    padding: 15px 10px; border-bottom: 2px solid var(--border);
+    text-transform: uppercase;
+  }
+  .body {
+    padding: 30px; flex-grow: 1; display: flex;
+    flex-direction: column; align-items: center; justify-content: center;
+    position: relative;
+  }
+
+  /* --- GEOMETRÍAS RECREADAS --- */
+  .cylinder {
+    position: relative; width: 160px; height: 110px;
+    margin: 10px auto;
+    border: 2px solid var(--border); border-top: none;
+    border-radius: 0 0 80px 80px / 0 0 20px 20px;
+    background: #ffffff;
+  }
+  .cylinder:before {
+    content: ""; position: absolute; top: -20px; left: -2px; width: 160px; height: 40px;
+    border: 2px solid var(--border); border-radius: 50%; background: #ffffff;
+  }
+  .cylinder .label {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -30%);
+    width: 90%; text-align: center; font-size: 14px; font-weight: 800; text-transform: uppercase;
+  }
+
+  .shape-container {
+    position: relative; display: flex; align-items: center; justify-content: center;
+  }
+  .shape-container.shield { width: 230px; min-height: 150px; margin-bottom: 30px; }
+  .shape-container.shield-small { width: 230px; min-height: 110px; margin-bottom: 20px; }
+  .shape-container.doc { width: 160px; min-height: 80px; }
+  
+  .svg-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+  .shape-content {
+    position: relative; z-index: 1; font-size: 13px; font-weight: 700;
+    text-align: center; line-height: 1.5; padding: 20px 35px;
+  }
+  
+  /* Textos específicos */
+  .subtitle { text-align: center; font-size: 18px; font-weight: 800; margin-bottom: 30px; text-transform: uppercase; width: 100%;}
+  .bullets { font-size: 18px; line-height: 1.8; color: var(--text); list-style: none; padding: 0; margin: 0; width: 70%;}
+  .bullets li:before { content: "▪"; margin-right: 10px; }
+  
+  .input-row { display:flex; align-items:center; margin-top:30px; width:100%; justify-content: center; }
+  .input-txt { font-size:12px; font-weight:700; text-align:center; margin-right:15px; width: 60px; line-height: 1.2; }
+
+  /* --- LÍNEAS SUPERPUESTAS EXACTAS (GRÁFICO 1.0) --- */
+  .g1-process-container { position: relative; margin-left: 50px; margin-top: 10px; width: 85%; }
+  .g1-item {
+    font-size: 16px; font-weight: 600; margin-bottom: 12px;
+    position: relative; z-index: 2; display: flex; align-items: center;
+  }
+  .g1-item-box { padding: 4px 0; background: #fff; }
+  .g1-route {
+    position: absolute; border-top: 2.5px solid var(--border);
+    border-left: 2.5px solid var(--border); border-bottom: 2.5px solid var(--border);
+  }
+  .g1-route::after {
+    content: ""; position: absolute; right: -12px; bottom: -6.5px;
+    border-left: 12px solid var(--border); border-top: 5px solid transparent; border-bottom: 5px solid transparent;
+  }
+  .g1-route-text {
+    position: absolute; right: -125px; bottom: -8px; font-size: 13px; font-weight: 600; white-space: nowrap;
+  }
+
+  .r0 { top: 18px; left: -65px; height: 302px; width: 80px; }
+  .r1 { top: 52px; left: -57px; height: 298px; width: 72px; }
+  .r2 { top: 86px; left: -49px; height: 294px; width: 64px; }
+  .r3 { top: 120px; left: -41px; height: 290px; width: 56px; }
+  .r4 { top: 154px; left: -33px; height: 286px; width: 48px; }
+  .r5 { top: 188px; left: -25px; height: 282px; width: 40px; }
+  .r6 { top: 222px; left: -17px; height: 278px; width: 32px; }
+  .r7 { top: 256px; left: -9px; height: 274px; width: 24px; }
+
+  /* Flechas grandes huecas */
+  .big-arrow-right { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); }
+  .big-arrow-down { margin: 5px auto 20px auto; display: flex; justify-content: center; }
+</style>
+</head>
+<body>
+  <div class="nav">
+    <strong>HIPO Funcional Clásico — SBE</strong>
+    <div class="links">
+      <a href="#g1">G 1.0</a><a href="#g2">G 2.0</a><a href="#g3">G 3.0</a><a href="#g4">G 4.0</a>
+      <a href="#g5">G 5.0</a><a href="#g6">G 6.0</a><a href="#g7">G 7.0</a><a href="#g8">G 8.0</a><a href="#g9">G 9.0</a>
+    </div>
+  </div>
+
+  <div class="sheet" id="g1">
+    <div class="grid">
+      <div class="col">
+        <div class="head">Entrada</div>
+        <div class="body">
+          <div class="cylinder"><div class="label"><u style="text-underline-offset: 4px;">BRIGADAS<br>MARACAIBO</u></div></div>
+          <div class="input-row">
+            <span class="input-txt" style="text-align:right; width:80px;">CLAVE DE<br>ACCESO</span>
+            <svg width="60" height="20" viewBox="0 0 60 20"><path d="M 0,10 L 45,10 M 45,3 L 60,10 L 45,17 Z" fill="#1e293b" stroke="#1e293b" stroke-width="2"/></svg>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col" style="padding-bottom: 60px;">
+        <div class="head">Proceso</div>
+        <div class="body" style="align-items: flex-start; padding-top: 40px; padding-left: 50px;">
+          <div class="subtitle" style="margin-left: -20px;">DIAGRAMA HIPO FUNCIONAL</div>
+          <div class="g1-process-container">
+            <div class="g1-item"><span class="g1-item-box">▪ Instituciones Educativas</span></div>
+            <div class="g1-item"><span class="g1-item-box">▪ Usuarios</span></div>
+            <div class="g1-item"><span class="g1-item-box">▪ Brigadas</span></div>
+            <div class="g1-item"><span class="g1-item-box">▪ Actividades | Proyectos</span></div>
+            <div class="g1-item"><span class="g1-item-box">▪ Reportes de impacto</span></div>
+            <div class="g1-item"><span class="g1-item-box">▪ Indicadores ambientales</span></div>
+            <div class="g1-item"><span class="g1-item-box">▪ Turnos operativos</span></div>
+            <div class="g1-item"><span class="g1-item-box">▪ Utilidades</span></div>
+
+            <div class="g1-route r0"><span class="g1-route-text">Ver diagrama 2.0</span></div>
+            <div class="g1-route r1"><span class="g1-route-text">Ver diagrama 3.0</span></div>
+            <div class="g1-route r2"><span class="g1-route-text">Ver diagrama 4.0</span></div>
+            <div class="g1-route r3"><span class="g1-route-text">Ver diagrama 5.0</span></div>
+            <div class="g1-route r4"><span class="g1-route-text">Ver diagrama 6.0</span></div>
+            <div class="g1-route r5"><span class="g1-route-text">Ver diagrama 7.0</span></div>
+            <div class="g1-route r6"><span class="g1-route-text">Ver diagrama 8.0</span></div>
+            <div class="g1-route r7"><span class="g1-route-text">Ver diagrama 9.0</span></div>
+          </div>
+          <div class="big-arrow-right">
+            <svg width="60" height="40" viewBox="0 0 60 40"><path d="M 2,12 L 35,12 L 35,2 L 58,20 L 35,38 L 35,28 L 2,28 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="head">Salida</div>
+        <div class="body">
+          <div class="shape-container shield">
+            <svg class="svg-bg" viewBox="0 0 230 180" preserveAspectRatio="none"><path d="M 18,3 L 195,3 Q 225,90 195,177 L 18,177 L 0,90 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg>
+            <div class="shape-content" style="font-size: 12px;">Gestión de Usuarios<br>Supervisar Usuarios<br>Asignación de Roles<br>Atender Problemas<br>Datos de Instituciones<br>Listado de Problemas<br>Listado de Brigadas<br>Control de miembros</div>
+          </div>
+          <div class="big-arrow-down"><svg width="40" height="60" viewBox="0 0 40 60"><path d="M 12,2 L 28,2 L 28,35 L 38,35 L 20,58 L 2,35 L 12,35 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg></div>
+          <div class="shape-container doc">
+            <svg class="svg-bg" viewBox="0 0 160 80" preserveAspectRatio="none"><path d="M 2,2 L 158,2 L 158,60 L 140,78 L 2,78 Z M 158,60 L 140,60 L 140,78" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg>
+            <div class="shape-content">Reportes</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet" id="g2">
+    <div class="grid">
+      <div class="col"><div class="head">Entrada</div><div class="body">
+        <div class="cylinder"><div class="label">TAB_INSTITUCION<br>EDUCATIVA</div></div>
+        <div class="input-row">
+          <span class="input-txt">Ingreso de<br>datos</span>
+          <svg width="45" height="15" viewBox="0 0 45 15"><path d="M 0,7.5 L 35,7.5 M 35,2 L 45,7.5 L 35,13 Z" fill="#1e293b" stroke="#1e293b" stroke-width="2"/></svg>
+        </div>
+        <div class="input-row">
+          <span class="input-txt">Registro /<br>consulta</span>
+          <svg width="45" height="15" viewBox="0 0 45 15"><path d="M 0,7.5 L 35,7.5 M 35,2 L 45,7.5 L 35,13 Z" fill="#1e293b" stroke="#1e293b" stroke-width="2"/></svg>
+        </div>
+      </div></div>
+      <div class="col"><div class="head">Proceso</div><div class="body">
+        <ul class="bullets">
+          <li>Registrar instituciones</li>
+          <li>Modificar instituciones</li>
+          <li>Consultar instituciones</li>
+          <li>Eliminar instituciones</li>
+        </ul>
+        <div class="big-arrow-right"><svg width="60" height="40" viewBox="0 0 60 40"><path d="M 2,12 L 35,12 L 35,2 L 58,20 L 35,38 L 35,28 L 2,28 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg></div>
+      </div></div>
+      <div class="col"><div class="head">Salida</div><div class="body">
+        <div class="shape-container shield-small">
+          <svg class="svg-bg" viewBox="0 0 230 110" preserveAspectRatio="none"><path d="M 18,3 L 195,3 Q 225,55 195,107 L 18,107 L 0,55 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.5"/></svg>
+          <div class="shape-content">Información<br>actualizada del<br>sistema</div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="sheet" id="g3">
+    <div class="grid">
+      <div class="col"><div class="head">Entrada</div><div class="body">
+        <div class="cylinder"><div class="label">TAB_USUARIOS</div></div>
+        <div class="input-row">
+          <span class="input-txt">Ingreso del<br>Usuario</span>
+          <svg width="45" height="15" viewBox="0 0 45 15"><path d="M 0,7.5 L 35,7.5 M 35,2 L 45,7.5 L 35,13 Z" fill="#1e293b" stroke="#1e293b" stroke-width="2"/></svg>
+        </div>
+        <div class="input-row">
+          <span class="input-txt">Definición<br>de Rol</span>
+          <svg width="45" height="15" viewBox="0 0 45 15"><path d="M 0,7.5 L 35,7.5 M 35,2 L 45,7.5 L 35,13 Z" fill="#1e293b" stroke="#1e293b" stroke-width="2"/></svg>
+        </div>
+      </div></div>
+      <div class="col"><div class="head">Proceso</div><div class="body">
+        <ul class="bullets">
+          <li>Registrar usuarios</li>
+          <li>Modificar usuarios</li>
+          <li>Consultar usuarios</li>
+          <li>Eliminar usuarios</li>
+          <li>Autentificar credenciales</li>
+        </ul>
+        <div class="big-arrow-right"><svg width="60" height="40" viewBox="0 0 60 40"><path d="M 2,12 L 35,12 L 35,2 L 58,20 L 35,38 L 35,28 L 2,28 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg></div>
+      </div></div>
+      <div class="col"><div class="head">Salida</div><div class="body">
+        <div class="shape-container shield-small">
+          <svg class="svg-bg" viewBox="0 0 230 110" preserveAspectRatio="none"><path d="M 18,3 L 195,3 Q 225,55 195,107 L 18,107 L 0,55 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg>
+          <div class="shape-content">Información<br>actualizada del<br>sistema</div>
+        </div>
+        <div class="big-arrow-down"><svg width="40" height="60" viewBox="0 0 40 60"><path d="M 12,2 L 28,2 L 28,35 L 38,35 L 20,58 L 2,35 L 12,35 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg></div>
+        <div class="shape-container doc">
+          <svg class="svg-bg" viewBox="0 0 160 80" preserveAspectRatio="none"><path d="M 2,2 L 158,2 L 158,60 L 140,78 L 2,78 Z M 158,60 L 140,60 L 140,78" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg>
+          <div class="shape-content">Autentificación</div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="sheet" id="g4">
+    <div class="grid">
+      <div class="col"><div class="head">Entrada</div><div class="body">
+        <div class="cylinder"><div class="label">TAB_BRIGADA</div></div>
+        <div class="input-row">
+          <span class="input-txt">Ingreso de<br>brigadas</span>
+          <svg width="45" height="15" viewBox="0 0 45 15"><path d="M 0,7.5 L 35,7.5 M 35,2 L 45,7.5 L 35,13 Z" fill="#1e293b" stroke="#1e293b" stroke-width="2"/></svg>
+        </div>
+        <div class="input-row">
+          <span class="input-txt">Asignación<br>de miembros</span>
+          <svg width="45" height="15" viewBox="0 0 45 15"><path d="M 0,7.5 L 35,7.5 M 35,2 L 45,7.5 L 35,13 Z" fill="#1e293b" stroke="#1e293b" stroke-width="2"/></svg>
+        </div>
+      </div></div>
+      <div class="col"><div class="head">Proceso</div><div class="body">
+        <ul class="bullets">
+          <li>Registrar brigadas</li>
+          <li>Modificar brigadas</li>
+          <li>Consultar brigadas</li>
+          <li>Eliminar brigadas</li>
+          <li>Asignar responsables</li>
+          <li>Gestionar miembros</li>
+        </ul>
+        <div class="big-arrow-right"><svg width="60" height="40" viewBox="0 0 60 40"><path d="M 2,12 L 35,12 L 35,2 L 58,20 L 35,38 L 35,28 L 2,28 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg></div>
+      </div></div>
+      <div class="col"><div class="head">Salida</div><div class="body">
+        <div class="shape-container shield-small">
+          <svg class="svg-bg" viewBox="0 0 230 110" preserveAspectRatio="none"><path d="M 18,3 L 195,3 Q 225,55 195,107 L 18,107 L 0,55 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg>
+          <div class="shape-content">Listado y control<br>de brigadas</div>
+        </div>
+        <div class="big-arrow-down"><svg width="40" height="60" viewBox="0 0 40 60"><path d="M 12,2 L 28,2 L 28,35 L 38,35 L 20,58 L 2,35 L 12,35 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg></div>
+        <div class="shape-container doc">
+          <svg class="svg-bg" viewBox="0 0 160 80" preserveAspectRatio="none"><path d="M 2,2 L 158,2 L 158,60 L 140,78 L 2,78 Z M 158,60 L 140,60 L 140,78" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg>
+          <div class="shape-content">Miembros<br>asignados</div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="sheet" id="g5">
+    <div class="grid">
+      <div class="col"><div class="head">Entrada</div><div class="body">
+        <div class="cylinder"><div class="label">TAB_ACTIVIDAD</div></div>
+        <div class="input-row">
+          <span class="input-txt">Ingreso de<br>actividades</span>
+          <svg width="45" height="15" viewBox="0 0 45 15"><path d="M 0,7.5 L 35,7.5 M 35,2 L 45,7.5 L 35,13 Z" fill="#1e293b" stroke="#1e293b" stroke-width="2"/></svg>
+        </div>
+        <div class="input-row">
+          <span class="input-txt">Cambio<br>de estado</span>
+          <svg width="45" height="15" viewBox="0 0 45 15"><path d="M 0,7.5 L 35,7.5 M 35,2 L 45,7.5 L 35,13 Z" fill="#1e293b" stroke="#1e293b" stroke-width="2"/></svg>
+        </div>
+      </div></div>
+      <div class="col"><div class="head">Proceso</div><div class="body">
+        <ul class="bullets">
+          <li>Registrar actividades</li>
+          <li>Modificar actividades</li>
+          <li>Consultar actividades</li>
+          <li>Eliminar actividades</li>
+          <li>Planificar actividad</li>
+        </ul>
+        <div class="big-arrow-right"><svg width="60" height="40" viewBox="0 0 60 40"><path d="M 2,12 L 35,12 L 35,2 L 58,20 L 35,38 L 35,28 L 2,28 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg></div>
+      </div></div>
+      <div class="col"><div class="head">Salida</div><div class="body">
+        <div class="shape-container shield-small">
+          <svg class="svg-bg" viewBox="0 0 230 110" preserveAspectRatio="none"><path d="M 18,3 L 195,3 Q 225,55 195,107 L 18,107 L 0,55 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg>
+          <div class="shape-content">Información<br>actualizada del<br>sistema</div>
+        </div>
+        <div class="big-arrow-down"><svg width="40" height="60" viewBox="0 0 40 60"><path d="M 12,2 L 28,2 L 28,35 L 38,35 L 20,58 L 2,35 L 12,35 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg></div>
+        <div class="shape-container doc">
+          <svg class="svg-bg" viewBox="0 0 160 80" preserveAspectRatio="none"><path d="M 2,2 L 158,2 L 158,60 L 140,78 L 2,78 Z M 158,60 L 140,60 L 140,78" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg>
+          <div class="shape-content">Planificación<br>operativa</div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="sheet" id="g6">
+    <div class="grid">
+      <div class="col"><div class="head">Entrada</div><div class="body">
+        <div class="cylinder"><div class="label">TAB_TURNO</div></div>
+        <div class="input-row">
+          <span class="input-txt">Ingreso de<br>turnos</span>
+          <svg width="45" height="15" viewBox="0 0 45 15"><path d="M 0,7.5 L 35,7.5 M 35,2 L 45,7.5 L 35,13 Z" fill="#1e293b" stroke="#1e293b" stroke-width="2"/></svg>
+        </div>
+        <div class="input-row">
+          <span class="input-txt">Horario y<br>ubicación</span>
+          <svg width="45" height="15" viewBox="0 0 45 15"><path d="M 0,7.5 L 35,7.5 M 35,2 L 45,7.5 L 35,13 Z" fill="#1e293b" stroke="#1e293b" stroke-width="2"/></svg>
+        </div>
+      </div></div>
+      <div class="col"><div class="head">Proceso</div><div class="body">
+        <ul class="bullets">
+          <li>Registrar turnos</li>
+          <li>Modificar turnos</li>
+          <li>Consultar turnos</li>
+          <li>Eliminar turnos</li>
+          <li>Asignar jornadas</li>
+        </ul>
+        <div class="big-arrow-right"><svg width="60" height="40" viewBox="0 0 60 40"><path d="M 2,12 L 35,12 L 35,2 L 58,20 L 35,38 L 35,28 L 2,28 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg></div>
+      </div></div>
+      <div class="col"><div class="head">Salida</div><div class="body">
+        <div class="shape-container shield-small">
+          <svg class="svg-bg" viewBox="0 0 230 110" preserveAspectRatio="none"><path d="M 18,3 L 195,3 Q 225,55 195,107 L 18,107 L 0,55 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg>
+          <div class="shape-content">Horarios<br>actualizados</div>
+        </div>
+        <div class="big-arrow-down"><svg width="40" height="60" viewBox="0 0 40 60"><path d="M 12,2 L 28,2 L 28,35 L 38,35 L 20,58 L 2,35 L 12,35 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg></div>
+        <div class="shape-container doc">
+          <svg class="svg-bg" viewBox="0 0 160 80" preserveAspectRatio="none"><path d="M 2,2 L 158,2 L 158,60 L 140,78 L 2,78 Z M 158,60 L 140,60 L 140,78" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg>
+          <div class="shape-content">Vista de<br>calendario / grilla</div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="sheet" id="g7">
+    <div class="grid">
+      <div class="col"><div class="head">Entrada</div><div class="body">
+        <div class="cylinder"><div class="label">TAB_REPORTES</div></div>
+        <div class="input-row">
+          <span class="input-txt">Datos de<br>incidentes</span>
+          <svg width="45" height="15" viewBox="0 0 45 15"><path d="M 0,7.5 L 35,7.5 M 35,2 L 45,7.5 L 35,13 Z" fill="#1e293b" stroke="#1e293b" stroke-width="2"/></svg>
+        </div>
+        <div class="input-row">
+          <span class="input-txt">Datos de<br>impacto</span>
+          <svg width="45" height="15" viewBox="0 0 45 15"><path d="M 0,7.5 L 35,7.5 M 35,2 L 45,7.5 L 35,13 Z" fill="#1e293b" stroke="#1e293b" stroke-width="2"/></svg>
+        </div>
+      </div></div>
+      <div class="col"><div class="head">Proceso</div><div class="body">
+        <ul class="bullets">
+          <li>Registrar reportes</li>
+          <li>Modificar reportes</li>
+          <li>Consultar reportes</li>
+          <li>Eliminar reportes</li>
+          <li>Exportar documento</li>
+        </ul>
+        <div class="big-arrow-right"><svg width="60" height="40" viewBox="0 0 60 40"><path d="M 2,12 L 35,12 L 35,2 L 58,20 L 35,38 L 35,28 L 2,28 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg></div>
+      </div></div>
+      <div class="col"><div class="head">Salida</div><div class="body">
+        <div class="shape-container shield-small">
+          <svg class="svg-bg" viewBox="0 0 230 110" preserveAspectRatio="none"><path d="M 18,3 L 195,3 Q 225,55 195,107 L 18,107 L 0,55 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg>
+          <div class="shape-content">Información<br>actualizada del<br>sistema</div>
+        </div>
+        <div class="big-arrow-down"><svg width="40" height="60" viewBox="0 0 40 60"><path d="M 12,2 L 28,2 L 28,35 L 38,35 L 20,58 L 2,35 L 12,35 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg></div>
+        <div class="shape-container doc">
+          <svg class="svg-bg" viewBox="0 0 160 80" preserveAspectRatio="none"><path d="M 2,2 L 158,2 L 158,60 L 140,78 L 2,78 Z M 158,60 L 140,60 L 140,78" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg>
+          <div class="shape-content">Incidentes e<br>impacto</div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="sheet" id="g8">
+    <div class="grid">
+      <div class="col"><div class="head">Entrada</div><div class="body">
+        <div class="cylinder"><div class="label">TAB_<br>ESTADISTICAS</div></div>
+        <div class="input-row">
+          <span class="input-txt">Datos<br>operativos</span>
+          <svg width="45" height="15" viewBox="0 0 45 15"><path d="M 0,7.5 L 35,7.5 M 35,2 L 45,7.5 L 35,13 Z" fill="#1e293b" stroke="#1e293b" stroke-width="2"/></svg>
+        </div>
+        <div class="input-row">
+          <span class="input-txt">Brigada<br>activa</span>
+          <svg width="45" height="15" viewBox="0 0 45 15"><path d="M 0,7.5 L 35,7.5 M 35,2 L 45,7.5 L 35,13 Z" fill="#1e293b" stroke="#1e293b" stroke-width="2"/></svg>
+        </div>
+      </div></div>
+      <div class="col"><div class="head">Proceso</div><div class="body">
+        <ul class="bullets">
+          <li>Calcular KPIs</li>
+          <li>Generar actividades por mes</li>
+          <li>Consultar distribución de estados</li>
+          <li>Mostrar métricas por brigada</li>
+        </ul>
+        <div class="big-arrow-right"><svg width="60" height="40" viewBox="0 0 60 40"><path d="M 2,12 L 35,12 L 35,2 L 58,20 L 35,38 L 35,28 L 2,28 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg></div>
+      </div></div>
+      <div class="col"><div class="head">Salida</div><div class="body">
+        <div class="shape-container shield-small">
+          <svg class="svg-bg" viewBox="0 0 230 110" preserveAspectRatio="none"><path d="M 18,3 L 195,3 Q 225,55 195,107 L 18,107 L 0,55 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg>
+          <div class="shape-content">Información<br>actualizada del<br>sistema</div>
+        </div>
+        <div class="big-arrow-down"><svg width="40" height="60" viewBox="0 0 40 60"><path d="M 12,2 L 28,2 L 28,35 L 38,35 L 20,58 L 2,35 L 12,35 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg></div>
+        <div class="shape-container doc">
+          <svg class="svg-bg" viewBox="0 0 160 80" preserveAspectRatio="none"><path d="M 2,2 L 158,2 L 158,60 L 140,78 L 2,78 Z M 158,60 L 140,60 L 140,78" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg>
+          <div class="shape-content">Gráficos e<br>indicadores</div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="sheet" id="g9">
+    <div class="grid">
+      <div class="col"><div class="head">Entrada</div><div class="body">
+        <div class="cylinder"><div class="label">TAB_UTILIDADES</div></div>
+        <div class="input-row">
+          <span class="input-txt">Herramientas<br>usuario</span>
+          <svg width="45" height="15" viewBox="0 0 45 15"><path d="M 0,7.5 L 35,7.5 M 35,2 L 45,7.5 L 35,13 Z" fill="#1e293b" stroke="#1e293b" stroke-width="2"/></svg>
+        </div>
+        <div class="input-row">
+          <span class="input-txt">Contenido<br>y apoyo</span>
+          <svg width="45" height="15" viewBox="0 0 45 15"><path d="M 0,7.5 L 35,7.5 M 35,2 L 45,7.5 L 35,13 Z" fill="#1e293b" stroke="#1e293b" stroke-width="2"/></svg>
+        </div>
+      </div></div>
+      <div class="col"><div class="head">Proceso</div><div class="body">
+        <ul class="bullets">
+          <li>Acerca de</li>
+          <li>Manual de usuario</li>
+          <li>Información legal</li>
+          <li>Contenido educativo</li>
+          <li>Importar / restaurar BD</li>
+          <li>Cerrar sesión</li>
+        </ul>
+        <div class="big-arrow-right"><svg width="60" height="40" viewBox="0 0 60 40"><path d="M 2,12 L 35,12 L 35,2 L 58,20 L 35,38 L 35,28 L 2,28 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg></div>
+      </div></div>
+      <div class="col"><div class="head">Salida</div><div class="body">
+        <div class="shape-container shield-small">
+          <svg class="svg-bg" viewBox="0 0 230 110" preserveAspectRatio="none"><path d="M 18,3 L 195,3 Q 225,55 195,107 L 18,107 L 0,55 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg>
+          <div class="shape-content">Información<br>general del<br>sistema</div>
+        </div>
+        <div class="big-arrow-down"><svg width="40" height="60" viewBox="0 0 40 60"><path d="M 12,2 L 28,2 L 28,35 L 38,35 L 20,58 L 2,35 L 12,35 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg></div>
+        <div class="shape-container doc">
+          <svg class="svg-bg" viewBox="0 0 160 80" preserveAspectRatio="none"><path d="M 2,2 L 158,2 L 158,60 L 140,78 L 2,78 Z M 158,60 L 140,60 L 140,78" fill="#ffffff" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/></svg>
+          <div class="shape-content">Soporte y<br>salida segura</div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</body>
+</html>
