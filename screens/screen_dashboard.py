@@ -29,12 +29,16 @@ import database.crud_actividad as crud_act
 
 def build(page: ft.Page, **kwargs) -> ft.Control:
     # 1. Parámetro de brigada activa
-    _tb = (page.data or {}).get("brigada_activa")
+    from components import resolver_contexto_filtrado
+    ctx = resolver_contexto_filtrado(page)
+    _tb = ctx.get("tipo_brigada")
+    _inst_id = ctx.get("institucion_id")
     
-    cache_key_stats = f"_cache_kpi_{_tb}"
-    cache_key_acts  = f"_cache_acts_{_tb}"
-    loading_key = f"_dashboard_loading_{_tb}"
-    loaded_key = f"_dashboard_loaded_{_tb}"
+    _ck_prefix = f"_{ctx['modo']}_{ctx.get('institucion_id')}_{ctx.get('brigada_rol_id')}"
+    cache_key_stats = f"{_ck_prefix}_kpi"
+    cache_key_acts  = f"{_ck_prefix}_acts"
+    loading_key = f"{_ck_prefix}_loading"
+    loaded_key = f"{_ck_prefix}_loaded"
 
     is_loaded = bool(page.data.get(loaded_key))
     
@@ -51,7 +55,7 @@ def build(page: ft.Page, **kwargs) -> ft.Control:
             spacing=20, alignment=ft.MainAxisAlignment.START,
         )
     else:
-        spinner_kpi = ft.Container(content=ft.ProgressRing(), alignment=ft.alignment.Alignment(0, 0), height=80, expand=True)
+        spinner_kpi = ft.Container(content=ft.ProgressRing(), alignment=ft.Alignment(0, 0), height=80, expand=True)
         fila_kpis = ft.Row([spinner_kpi], spacing=20, alignment=ft.MainAxisAlignment.CENTER)
 
     # 3. Sección Gráfica
@@ -134,7 +138,7 @@ def build(page: ft.Page, **kwargs) -> ft.Control:
             controles_acts.append(ft.Text("No hay actividades recientes.", color=COLOR_TEXTO_SEC, italic=True))
         lista_actividades = ft.Column(controles_acts, spacing=0)
     else:
-        spinner_acts = ft.Container(content=ft.ProgressRing(), alignment=ft.alignment.Alignment(0, 0), height=100)
+        spinner_acts = ft.Container(content=ft.ProgressRing(), alignment=ft.Alignment(0, 0), height=100)
         lista_actividades = ft.Column([spinner_acts], spacing=0)
 
     contenedor_actividades = card_principal(
@@ -158,7 +162,7 @@ def build(page: ft.Page, **kwargs) -> ft.Control:
     if is_loaded:
         mensaje_dia_container = ft.Container(content=_build_mensaje_dia(page))
     else:
-        spinner_msg = ft.Container(content=ft.ProgressRing(), alignment=ft.alignment.Alignment(0, 0), height=40)
+        spinner_msg = ft.Container(content=ft.ProgressRing(), alignment=ft.Alignment(0, 0), height=40)
         mensaje_dia_container = ft.Container(content=spinner_msg)
 
     # --- Lógica de Carga Asíncrona (Aiven Cloud Optimization) ---
@@ -173,7 +177,10 @@ def build(page: ft.Page, **kwargs) -> ft.Control:
             if page.data.get(cache_key_stats):
                 stats = page.data[cache_key_stats]
             else:
-                stats = await asyncio.to_thread(crud_dash.get_kpi_stats, _tb)
+                if ctx["modo"] in ["sin_acceso", "sin_brigada"]:
+                    stats = {"total_brigadas": 0, "total_usuarios": 0, "actividades_activas": 0, "actividades_completadas": 0}
+                else:
+                    stats = await asyncio.to_thread(crud_dash.get_kpi_stats, _tb, _inst_id)
                 page.data[cache_key_stats] = stats
 
             fila_kpis.controls = [
@@ -192,7 +199,11 @@ def build(page: ft.Page, **kwargs) -> ft.Control:
             if page.data.get(cache_key_acts):
                 actividades = page.data[cache_key_acts]
             else:
-                actividades = await asyncio.to_thread(crud_act.obtener_actividades_recientes, 5, _tb)
+                if ctx["modo"] in ["sin_acceso", "sin_brigada"]:
+                    actividades = []
+                else:
+                    # En pantalla principal también se pueden filtrar recientes por institución.
+                    actividades = await asyncio.to_thread(crud_act.obtener_actividades_recientes, 5, tipo_brigada=_tb, institucion_id=_inst_id)
                 page.data[cache_key_acts] = actividades
 
             lista_actividades.controls.clear()

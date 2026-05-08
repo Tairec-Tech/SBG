@@ -235,12 +235,12 @@ def _abrir_modal_actividad(page: ft.Page, on_success=None, usuario_actual=None, 
         )
     else:
         try:
-            _tb = (page.data or {}).get("brigada_activa")
-            if es_profesor(rol) and user_id:
-                institucion_id = usuario_actual.get("institucion_id")
-                if not institucion_id:
-                    raise ValueError("Sesión sin institución válida.")
-                todas = crud_brigada.listar_brigadas_para_profesor(user_id, institucion_id, _tb)
+            from components import resolver_contexto_filtrado
+            ctx = resolver_contexto_filtrado(page)
+            if ctx["modo"] in ["sin_acceso", "sin_brigada"]:
+                brigada_info_text = ft.Text("No tienes brigadas asignadas o sin acceso.", color="#ef4444", italic=True)
+            elif ctx["modo"] == "brigada" and es_profesor(rol) and user_id:
+                todas = crud_brigada.listar_brigadas_para_profesor(user_id, ctx["institucion_id"])
                 mis_brigadas = [b for b in todas if b.get("es_propia", False) or b.get("profesor_id") == user_id]
 
                 if len(mis_brigadas) == 1:
@@ -255,7 +255,7 @@ def _abrir_modal_actividad(page: ft.Page, on_success=None, usuario_actual=None, 
                 else:
                     brigada_info_text = ft.Text("No tienes brigadas asignadas.", color="#ef4444", italic=True)
             else:
-                brigadas_disponibles = crud_brigada.listar_brigadas(_tb)
+                brigadas_disponibles = crud_brigada.listar_brigadas(institucion_id=ctx.get("institucion_id"))
                 opciones = [ft.dropdown.Option(str(b["idBrigada"]), b["nombre_brigada"]) for b in brigadas_disponibles]
                 dd_brigada = ft.Dropdown(hint_text="Seleccione", options=opciones, value=opciones[0].key if opciones else None, content_padding=ft.Padding(12, 14), **_DROPDOWN)
         except Exception as e:
@@ -595,16 +595,30 @@ def build(page: ft.Page, content_area=None, **kwargs) -> ft.Control:
     user_id = usuario.get("id")
     es_prof = es_profesor(rol)
     brigada_rol_id = usuario.get("Brigada_idBrigada") if not es_admin(rol) else None
+    from components import resolver_contexto_filtrado
+    ctx_pantalla = resolver_contexto_filtrado(page)
+    puede_operar = ctx_pantalla["modo"] in ("institucional", "brigada")
+    mensaje_bloqueo = (
+        "No posee una brigada asignada. Solicite asignacion a la direccion institucional."
+        if ctx_pantalla["modo"] == "sin_brigada"
+        else "Sin acceso a actividades."
+    )
+
+    def _bloquear_operacion():
+        page.snack_bar = ft.SnackBar(ft.Text(mensaje_bloqueo), bgcolor="#ef4444")
+        page.snack_bar.open = True
+        page.update()
 
     def refresh():
         if content_area:
             content_area.content = build(page, content_area)
             page.update()
 
-    _tb = (page.data or {}).get("brigada_activa")
-
     # ─── Callbacks de acciones ────────────────────────────────────
     def on_completar(id_actividad: int):
+        if not puede_operar:
+            _bloquear_operacion()
+            return
         exito = crud_act.marcar_actividad_completada(
             id_actividad=id_actividad,
             usuario_id=user_id,
@@ -623,12 +637,21 @@ def build(page: ft.Page, content_area=None, **kwargs) -> ft.Control:
             page.update()
 
     def on_editar(act: dict):
+        if not puede_operar:
+            _bloquear_operacion()
+            return
         _abrir_modal_actividad(page, on_success=refresh, usuario_actual=usuario, actividad=act)
 
     def on_eliminar(act: dict):
+        if not puede_operar:
+            _bloquear_operacion()
+            return
         _abrir_modal_eliminar(page, actividad=act, on_success=refresh, usuario_actual=usuario)
 
     def on_nueva_click(_):
+        if not puede_operar:
+            _bloquear_operacion()
+            return
         _abrir_modal_actividad(page, on_success=refresh, usuario_actual=usuario)
 
     # ─── Construir lista de actividades ───────────────────────────
@@ -636,9 +659,14 @@ def build(page: ft.Page, content_area=None, **kwargs) -> ft.Control:
         lista_items = ft.Column(spacing=0, scroll=ft.ScrollMode.AUTO)
 
         try:
-            actividades = crud_act.obtener_actividades_recientes(
-                50, tipo_brigada=_tb, solo_usuario_id=None, brigada_rol_id=brigada_rol_id,
-            )
+            from components import resolver_contexto_filtrado
+            ctx = resolver_contexto_filtrado(page)
+            if ctx["modo"] in ["sin_acceso", "sin_brigada"]:
+                actividades = []
+            else:
+                actividades = crud_act.obtener_actividades_recientes(
+                    50, tipo_brigada=ctx.get("tipo_brigada"), solo_usuario_id=None, brigada_rol_id=ctx.get("brigada_rol_id"), institucion_id=ctx.get("institucion_id")
+                )
         except Exception as e:
             print(f"Error cargando actividades: {e}")
             actividades = []
@@ -667,7 +695,7 @@ def build(page: ft.Page, content_area=None, **kwargs) -> ft.Control:
         titulo_pagina(
             "Actividades",
             "Gestión y seguimiento de actividades de las brigadas",
-            accion=boton_primario("Nueva Actividad", ft.Icons.ADD, on_click=on_nueva_click),
+            accion=boton_primario("Nueva Actividad", ft.Icons.ADD, on_click=on_nueva_click) if puede_operar else None,
         ),
     ]
 

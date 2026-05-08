@@ -86,7 +86,7 @@ def crear_reporte(titulo: str, descripcion: str, ubicacion: str, prioridad: str,
         print(f"Error creando reporte: {e}")
         return None
 
-def listar_reportes(tipo_brigada=None, brigada_rol_id=None):
+def listar_reportes(tipo_brigada=None, brigada_rol_id=None, institucion_id=None):
     _asegurar_tabla_reporte()
     sql = """
     SELECT r.idReporte, r.titulo, r.descripcion, r.ubicacion, r.prioridad, r.estado, r.creado_en, 
@@ -99,6 +99,12 @@ def listar_reportes(tipo_brigada=None, brigada_rol_id=None):
     if brigada_rol_id is not None:
         sql += " AND b.idBrigada = %s"
         params.append(brigada_rol_id)
+    elif institucion_id is not None:
+        sql += " AND b.Institucion_Educativa_idInstitucion = %s"
+        params.append(institucion_id)
+        if tipo_brigada:
+            sql += " AND b.tipo_brigada = %s"
+            params.append(tipo_brigada)
     elif tipo_brigada:
         sql += " AND b.tipo_brigada = %s"
         params.append(tipo_brigada)
@@ -129,7 +135,7 @@ def actualizar_estado(id_reporte: int, nuevo_estado: str) -> bool:
         print(f"Error actualizando estado del reporte: {e}")
         return False
 
-def get_reporte_stats(tipo_brigada=None, brigada_rol_id=None):
+def get_reporte_stats(tipo_brigada=None, brigada_rol_id=None, institucion_id=None):
     _asegurar_tabla_reporte()
     stats = {
         "total": 0,
@@ -143,6 +149,13 @@ def get_reporte_stats(tipo_brigada=None, brigada_rol_id=None):
     if brigada_rol_id is not None:
         where_base = "WHERE b.idBrigada = %s"
         params_base.append(brigada_rol_id)
+    elif institucion_id is not None:
+        if tipo_brigada:
+            where_base = "WHERE b.Institucion_Educativa_idInstitucion = %s AND b.tipo_brigada = %s"
+            params_base.extend([institucion_id, tipo_brigada])
+        else:
+            where_base = "WHERE b.Institucion_Educativa_idInstitucion = %s"
+            params_base.append(institucion_id)
     elif tipo_brigada:
         where_base = "WHERE b.tipo_brigada = %s"
         params_base.append(tipo_brigada)
@@ -164,8 +177,8 @@ def get_reporte_stats(tipo_brigada=None, brigada_rol_id=None):
 # REPORTES DE ACTIVIDADES
 # ==========================================================
 
-def listar_reportes_actividad(tipo_brigada=None, brigada_rol_id=None):
-    """Obtiene los reportes de actividades, filtrados por tipo_brigada o brigada_rol_id."""
+def listar_reportes_actividad(tipo_brigada=None, brigada_rol_id=None, institucion_id=None):
+    """Obtiene los reportes de actividades, filtrados por institucion_id, brigada_rol_id o tipo_brigada."""
     sql = """
     SELECT 
         r.idReporte_actividad, 
@@ -187,6 +200,12 @@ def listar_reportes_actividad(tipo_brigada=None, brigada_rol_id=None):
     if brigada_rol_id is not None:
         sql += " AND b.idBrigada = %s"
         params.append(brigada_rol_id)
+    elif institucion_id is not None:
+        sql += " AND b.Institucion_Educativa_idInstitucion = %s"
+        params.append(institucion_id)
+        if tipo_brigada:
+            sql += " AND b.tipo_brigada = %s"
+            params.append(tipo_brigada)
     elif tipo_brigada:
         sql += " AND b.tipo_brigada = %s"
         params.append(tipo_brigada)
@@ -224,8 +243,8 @@ def crear_reporte_actividad(resumen: str, resultado: str, actividad_id: int, usu
 # REPORTES DE IMPACTO
 # ==========================================================
 
-def listar_reportes_impacto(tipo_brigada=None, brigada_rol_id=None):
-    """Obtiene los reportes de impacto, filtrados por tipo_brigada o brigada_rol_id."""
+def listar_reportes_impacto(tipo_brigada=None, brigada_rol_id=None, institucion_id=None):
+    """Obtiene los reportes de impacto, filtrados por institucion_id, brigada_rol_id o tipo_brigada."""
     sql = """
     SELECT 
         i.idReporte_impacto, 
@@ -249,6 +268,12 @@ def listar_reportes_impacto(tipo_brigada=None, brigada_rol_id=None):
     if brigada_rol_id is not None:
         sql += " AND b.idBrigada = %s"
         params.append(brigada_rol_id)
+    elif institucion_id is not None:
+        sql += " AND b.Institucion_Educativa_idInstitucion = %s"
+        params.append(institucion_id)
+        if tipo_brigada:
+            sql += " AND b.tipo_brigada = %s"
+            params.append(tipo_brigada)
     elif tipo_brigada:
         sql += " AND b.tipo_brigada = %s"
         params.append(tipo_brigada)

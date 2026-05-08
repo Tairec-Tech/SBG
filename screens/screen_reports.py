@@ -42,10 +42,16 @@ def _mostrar_snack(page: ft.Page, mensaje: str, color: str):
 
 def build(page: ft.Page, **kwargs) -> ft.Control:
     usuario = _obtener_usuario_actual(page)
-    puede_crear_reporte = _puede_crear_reportes(usuario.get("rol", ""))
-    brigada_rol_id = usuario.get("Brigada_idBrigada") if not es_admin(usuario.get("rol", "")) else None
+    rol = usuario.get("rol", "")
+    
+    from components import resolver_contexto_filtrado
+    ctx = resolver_contexto_filtrado(page)
+    _tb = ctx.get("tipo_brigada")
+    brigada_rol_id = ctx.get("brigada_rol_id")
+    _inst_id = ctx.get("institucion_id")
 
-    _tb = (page.data or {}).get("brigada_activa")
+    puede_ver = ctx["modo"] not in ["sin_acceso", "sin_brigada"]
+    puede_crear_reporte = puede_ver and _puede_crear_reportes(rol)
     file_picker = ft.FilePicker()
 
     def on_nuevo_report(_):
@@ -56,16 +62,24 @@ def build(page: ft.Page, **kwargs) -> ft.Control:
         abrir_form_nuevo_reporte(page)
 
     def _refresh(_=None):
-        stats = crud_reporte.get_reporte_stats(_tb, brigada_rol_id)
-        reportes = crud_reporte.listar_reportes(_tb, brigada_rol_id)
+        if not puede_ver:
+            stats = {"total": 0, "en_proceso": 0, "resueltos": 0}
+            reportes = []
+        else:
+            stats = crud_reporte.get_reporte_stats(_tb, brigada_rol_id, _inst_id)
+            reportes = crud_reporte.listar_reportes(_tb, brigada_rol_id, _inst_id)
         kpis_row.controls = _build_kpi_cards(stats)
         reports_col.controls = _build_report_list(page, reportes, file_picker, _refresh)
         page.update()
 
-    stats = crud_reporte.get_reporte_stats(_tb, brigada_rol_id)
-    kpis_row = ft.Row(controls=_build_kpi_cards(stats), spacing=16)
+    if not puede_ver:
+        stats = {"total": 0, "en_proceso": 0, "resueltos": 0}
+        reportes = []
+    else:
+        stats = crud_reporte.get_reporte_stats(_tb, brigada_rol_id, _inst_id)
+        reportes = crud_reporte.listar_reportes(_tb, brigada_rol_id, _inst_id)
 
-    reportes = crud_reporte.listar_reportes(_tb, brigada_rol_id)
+    kpis_row = ft.Row(controls=_build_kpi_cards(stats), spacing=16)
     reports_col = ft.Column(controls=_build_report_list(page, reportes, file_picker, _refresh), spacing=14)
 
     contenido = ft.Column(

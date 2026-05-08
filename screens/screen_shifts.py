@@ -315,25 +315,52 @@ def build(page: ft.Page, content_area=None, **kwargs) -> ft.Control:
     brigada_rol_id = usuario.get("Brigada_idBrigada") if not es_admin(rol) else None
 
     def on_nuevo_turno(_):
+        if sin_contexto_operativo:
+            page.snack_bar = ft.SnackBar(ft.Text(mensaje_bloqueo), bgcolor="#ef4444")
+            page.snack_bar.open = True
+            page.update()
+            return
         from forms import abrir_form_turno
         abrir_form_turno(page)
 
-    _tb = (page.data or {}).get("brigada_activa")
+    from components import resolver_contexto_filtrado
+    ctx = resolver_contexto_filtrado(page)
+    _tb = ctx.get("tipo_brigada")
+    _inst_id = ctx.get("institucion_id")
+    sin_contexto_operativo = ctx["modo"] in ("sin_acceso", "sin_brigada")
+    mensaje_bloqueo = (
+        "No posee una brigada asignada. Solicite asignacion a la direccion institucional."
+        if ctx["modo"] == "sin_brigada"
+        else "Sin acceso a los turnos."
+    )
 
     def _refresh(_=None):
         if content_area:
             content_area.content = build(page, content_area)
             page.update()
         else:
-            stats = crud_turno.get_turno_stats(_tb, brigada_rol_id)
-            kpis_row.controls = _build_kpi_cards(stats)
-            schedule_col.controls = _build_merged_schedule(_tb, brigada_rol_id, user_id, rol, _refresh, _on_editar, _on_eliminar, page)
+            if sin_contexto_operativo:
+                stats = {"total_turnos": 0, "brigadistas_asignados": 0, "dias_con_turnos": 0}
+                kpis_row.controls = _build_kpi_cards(stats)
+                schedule_col.controls = [_empty_operativo()]
+            else:
+                stats = crud_turno.get_turno_stats(_tb, brigada_rol_id, _inst_id)
+                kpis_row.controls = _build_kpi_cards(stats)
+                schedule_col.controls = _build_merged_schedule(_tb, brigada_rol_id, _inst_id, user_id, rol, _refresh, _on_editar, _on_eliminar, page)
             page.update()
 
-    stats = crud_turno.get_turno_stats(_tb, brigada_rol_id)
+    if sin_contexto_operativo:
+        stats = {"total_turnos": 0, "brigadistas_asignados": 0, "dias_con_turnos": 0}
+    else:
+        stats = crud_turno.get_turno_stats(_tb, brigada_rol_id, _inst_id)
     kpis_row = ft.Row(controls=_build_kpi_cards(stats), spacing=16)
 
     def _on_editar(turno):
+        if sin_contexto_operativo:
+            page.snack_bar = ft.SnackBar(ft.Text(mensaje_bloqueo), bgcolor="#ef4444")
+            page.snack_bar.open = True
+            page.update()
+            return
         if turno.get("es_actividad"):
             # Omitiremos editar actividades desde aquí en esta fase puramente de lectura de calendarios
             page.snack_bar = ft.SnackBar(ft.Text("Edita la planificación desde la vista de Actividades."), bgcolor="#3b82f6")
@@ -343,17 +370,22 @@ def build(page: ft.Page, content_area=None, **kwargs) -> ft.Control:
             _abrir_modal_editar_turno(page, turno, usuario, on_success=_refresh)
 
     def _on_eliminar(turno):
+        if sin_contexto_operativo:
+            page.snack_bar = ft.SnackBar(ft.Text(mensaje_bloqueo), bgcolor="#ef4444")
+            page.snack_bar.open = True
+            page.update()
+            return
         if turno.get("es_actividad"):
             pass
         else:
             _abrir_modal_eliminar_turno(page, turno, usuario, on_success=_refresh)
 
-    def _build_merged_schedule(_tb, b_id, uid, ro, _ref, _oe, _od, p):
+    def _build_merged_schedule(_tb, b_id, inst_id, uid, ro, _ref, _oe, _od, p):
         import database.crud_actividad as crud_act
         import util_json_plan
         from datetime import datetime
-        turnos = crud_turno.listar_turnos(tipo_brigada=_tb, brigada_rol_id=b_id)
-        actividades = crud_act.listar_actividades(tipo_brigada=_tb, brigada_rol_id=b_id)
+        turnos = crud_turno.listar_turnos(tipo_brigada=_tb, brigada_rol_id=b_id, institucion_id=inst_id)
+        actividades = crud_act.listar_actividades(tipo_brigada=_tb, brigada_rol_id=b_id, institucion_id=inst_id)
         
         merged = list(turnos)
         for act in actividades:
@@ -391,17 +423,31 @@ def build(page: ft.Page, content_area=None, **kwargs) -> ft.Control:
                 
         return _build_turno_section(merged, uid, ro, _ref, _oe, _od, p)
 
-    schedule_col = ft.Column(
-        controls=_build_merged_schedule(_tb, brigada_rol_id, user_id, rol, _refresh, _on_editar, _on_eliminar, page),
-        spacing=0,
-    )
+    def _empty_operativo():
+        return ft.Container(
+            content=ft.Column(
+                [
+                    ft.Icon(ft.Icons.EVENT_BUSY_ROUNDED, size=48, color=COLOR_BORDE),
+                    ft.Text(mensaje_bloqueo, size=16, color=COLOR_TEXTO_SEC, text_align=ft.TextAlign.CENTER),
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=12,
+            ),
+            padding=40,
+            alignment=ft.Alignment(0, 0),
+        )
+
+    if sin_contexto_operativo:
+        schedule_col = ft.Column([_empty_operativo()], scroll=ft.ScrollMode.AUTO)
+    else:
+        schedule_col = ft.Column(_build_merged_schedule(_tb, brigada_rol_id, _inst_id, user_id, rol, _refresh, _on_editar, _on_eliminar, page), scroll=ft.ScrollMode.AUTO)
 
     contenido = ft.Column(
         [
             titulo_pagina(
                 "Calendario de Brigada",
                 "Organiza y asigna los turnos de las brigadas",
-                accion=boton_primario("Nuevo Turno", ft.Icons.ADD, on_click=on_nuevo_turno),
+                accion=boton_primario("Nuevo Turno", ft.Icons.ADD, on_click=on_nuevo_turno) if not sin_contexto_operativo else None,
             ),
             ft.Container(height=28),
             kpis_row,

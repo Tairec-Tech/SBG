@@ -52,6 +52,9 @@ def build(page: ft.Page, content_area=None, **kwargs) -> ft.Control:
             usuario = json.loads(raw) if isinstance(raw, str) else (raw or {})
     except Exception:
         pass
+    from components import resolver_contexto_filtrado
+    ctx = resolver_contexto_filtrado(page)
+    sin_contexto_operativo = ctx["modo"] in ("sin_acceso", "sin_brigada")
     puede_agregar = es_profesor(usuario.get("rol", ""))
     puede_agregar_profesor = es_admin(usuario.get("rol", ""))
 
@@ -70,9 +73,9 @@ def build(page: ft.Page, content_area=None, **kwargs) -> ft.Control:
 
     # Construir botones de acción condicionalmente
     botones_accion = []
-    if puede_agregar:
+    if puede_agregar and not sin_contexto_operativo:
         botones_accion.append(boton_primario("Agregar Brigadista", ft.Icons.PERSON_ADD, on_click=on_agregar))
-    if puede_agregar_profesor:
+    if puede_agregar_profesor and not sin_contexto_operativo:
         botones_accion.append(boton_primario("Agregar Profesor", ft.Icons.SCHOOL, on_click=on_agregar_profesor))
     accion_barra = ft.Row(
         [c for c in botones_accion if c is not None],
@@ -87,7 +90,7 @@ def build(page: ft.Page, content_area=None, **kwargs) -> ft.Control:
                 accion=accion_barra,
             ),
             ft.Container(height=24),
-            _build_filtros_y_lista(page, refresh),
+            _build_estado_restringido(ctx) if sin_contexto_operativo else _build_filtros_y_lista(page, refresh),
         ],
         scroll=ft.ScrollMode.AUTO,
         expand=True,
@@ -98,6 +101,26 @@ def build(page: ft.Page, content_area=None, **kwargs) -> ft.Control:
         padding=24,
         bgcolor=COLOR_FONDO_VERDE,
         expand=True,
+    )
+
+
+def _build_estado_restringido(ctx):
+    mensaje = (
+        "No posee una brigada asignada. Solicite asignacion a la direccion institucional."
+        if ctx["modo"] == "sin_brigada"
+        else "No se pudo determinar el contexto institucional del usuario."
+    )
+    return card_principal(
+        ft.Column(
+            [
+                ft.Icon(ft.Icons.LOCK_OUTLINE, color=COLOR_TEXTO_SEC, size=48),
+                ft.Container(height=16),
+                ft.Text("Acceso restringido", size=16, weight="bold", color=COLOR_TEXTO),
+                ft.Text(mensaje, color=COLOR_TEXTO_SEC, text_align=ft.TextAlign.CENTER),
+            ],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=0,
+        )
     )
 
 

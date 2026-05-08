@@ -395,7 +395,7 @@ def _build_bar_chart_categorias(datos, colores_key, tooltip_label, titulo_eje=""
                 ft.Text("Los datos aparecerán cuando haya actividades con planificación estructurada.",
                          size=12, color=COLOR_TEXTO_SEC, text_align=ft.TextAlign.CENTER),
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=4),
-            height=200, alignment=ft.alignment.Alignment(0, 0),
+        height=200, alignment=ft.Alignment(0, 0),
         )
 
     colores = _COLORES_PLANIFICACION.get(colores_key, _COLORES_PLANIFICACION["momento"])
@@ -481,50 +481,39 @@ def _build_pie_chart_categorias(datos, colores_key, titulo_vacio="Sin datos"):
 
 def _build_con_graficos(page: ft.Page) -> ft.Control:
     # 1. Obtener tipo de brigada y cfg sincrónicamente
-    _tb = (page.data or {}).get("brigada_activa")
+    from components import resolver_contexto_filtrado
+    ctx = resolver_contexto_filtrado(page)
+    _tb = ctx.get("tipo_brigada")
+    brigada_rol_id = ctx.get("brigada_rol_id")
+    _inst_id = ctx.get("institucion_id")
     cfg = _get_config(_tb)
-    
-    usuario = {}
-    try:
-        import json
-        if getattr(page, "data", None) and isinstance(page.data.get("usuario_actual"), dict):
-            usuario = page.data["usuario_actual"]
-        else:
-            raw = page.client_storage.get("usuario_actual")
-            if raw:
-                usuario = json.loads(raw) if isinstance(raw, str) else raw
-    except Exception:
-        pass
-        
-    from database.crud_usuario import es_admin
-    es_admin_usr = es_admin(usuario.get("rol", ""))
-    brigada_rol_id = usuario.get("Brigada_idBrigada") if not es_admin_usr else None
 
-    ck_kpis = f"_cache_stats_kpis_{_tb}"
-    ck_bar  = f"_cache_stats_bar_{_tb}"
-    ck_line = f"_cache_stats_line_{_tb}"
-    ck_pie  = f"_cache_stats_pie_{_tb}"
-    ck_momento = f"_cache_stats_momento_{_tb}"
-    ck_origen  = f"_cache_stats_origen_{_tb}"
-    ck_nivel   = f"_cache_stats_nivel_{_tb}"
+    _ck_prefix = f"_{ctx['modo']}_{ctx.get('institucion_id')}_{ctx.get('brigada_rol_id')}"
+    ck_kpis = f"{_ck_prefix}_kpis"
+    ck_bar  = f"{_ck_prefix}_bar"
+    ck_line = f"{_ck_prefix}_line"
+    ck_pie  = f"{_ck_prefix}_pie"
+    ck_momento = f"{_ck_prefix}_momento"
+    ck_origen  = f"{_ck_prefix}_origen"
+    ck_nivel   = f"{_ck_prefix}_nivel"
     
-    loading_key = f"_stats_loading_{_tb}"
-    loaded_key = f"_stats_loaded_{_tb}"
+    loading_key = f"{_ck_prefix}_loading"
+    loaded_key = f"{_ck_prefix}_loaded"
     
     is_loaded = bool(page.data.get(loaded_key))
     
     # Contenedores para reemplazo de contenido dinámico
-    kpis_container = ft.Container(height=110, alignment=ft.alignment.Alignment(0, 0))
-    bar_container = ft.Container(height=320, alignment=ft.alignment.Alignment(0, 0))
-    line_container = ft.Container(height=320, alignment=ft.alignment.Alignment(0, 0))
-    pie_chart_container = ft.Container(height=280, alignment=ft.alignment.Alignment(0, 0), expand=True)
-    pie_legend_container = ft.Container(alignment=ft.alignment.Alignment(0, 0))
+    kpis_container = ft.Container(height=110, alignment=ft.Alignment(0, 0))
+    bar_container = ft.Container(height=320, alignment=ft.Alignment(0, 0))
+    line_container = ft.Container(height=320, alignment=ft.Alignment(0, 0))
+    pie_chart_container = ft.Container(height=280, alignment=ft.Alignment(0, 0), expand=True)
+    pie_legend_container = ft.Container(alignment=ft.Alignment(0, 0))
 
     # Nuevos contenedores para gráficos de planificación
-    momento_container = ft.Container(height=250, alignment=ft.alignment.Alignment(0, 0))
-    origen_chart_container = ft.Container(height=220, alignment=ft.alignment.Alignment(0, 0), expand=True)
-    origen_legend_container = ft.Container(alignment=ft.alignment.Alignment(0, 0))
-    nivel_container = ft.Container(height=250, alignment=ft.alignment.Alignment(0, 0))
+    momento_container = ft.Container(height=250, alignment=ft.Alignment(0, 0))
+    origen_chart_container = ft.Container(height=220, alignment=ft.Alignment(0, 0), expand=True)
+    origen_legend_container = ft.Container(alignment=ft.Alignment(0, 0))
+    nivel_container = ft.Container(height=250, alignment=ft.Alignment(0, 0))
 
     def popular_vistas():
         kpis_data = page.data.get(ck_kpis, {})
@@ -585,15 +574,24 @@ def _build_con_graficos(page: ft.Page) -> ft.Control:
 
         try:
             import asyncio
-            kpis = await asyncio.to_thread(crud_est.get_kpis_estadisticas, _tb, brigada_rol_id)
-            act_por_mes = await asyncio.to_thread(crud_est.get_actividades_por_mes, _tb, brigada_rol_id)
-            reportes_tendencia = await asyncio.to_thread(crud_est.get_tendencia_reportes_por_mes, _tb, brigada_rol_id)
-            estados = await asyncio.to_thread(crud_est.get_distribucion_estados_actividades, _tb, brigada_rol_id)
+            if ctx["modo"] in ["sin_acceso", "sin_brigada"]:
+                kpis = {"voluntariado_activo": 0, "horas_invertidas": 0, "despliegue_operativo": 0, "impacto_documentado": 0, "tasa_efectividad": 0}
+                act_por_mes = []
+                reportes_tendencia = []
+                estados = []
+                por_momento = []
+                por_origen = []
+                por_nivel = []
+            else:
+                kpis = await asyncio.to_thread(crud_est.get_kpis_estadisticas, _tb, brigada_rol_id, _inst_id)
+                act_por_mes = await asyncio.to_thread(crud_est.get_actividades_por_mes, _tb, brigada_rol_id, _inst_id)
+                reportes_tendencia = await asyncio.to_thread(crud_est.get_tendencia_reportes_por_mes, _tb, brigada_rol_id, _inst_id)
+                estados = await asyncio.to_thread(crud_est.get_distribucion_estados_actividades, _tb, brigada_rol_id, _inst_id)
 
-            # Nuevos: planificación
-            por_momento = await asyncio.to_thread(crud_est.get_actividades_por_momento, _tb, brigada_rol_id)
-            por_origen = await asyncio.to_thread(crud_est.get_actividades_por_origen, _tb, brigada_rol_id)
-            por_nivel = await asyncio.to_thread(crud_est.get_actividades_por_nivel, _tb, brigada_rol_id)
+                # Nuevos: planificación
+                por_momento = await asyncio.to_thread(crud_est.get_actividades_por_momento, _tb, brigada_rol_id, _inst_id)
+                por_origen = await asyncio.to_thread(crud_est.get_actividades_por_origen, _tb, brigada_rol_id, _inst_id)
+                por_nivel = await asyncio.to_thread(crud_est.get_actividades_por_nivel, _tb, brigada_rol_id, _inst_id)
 
             page.data[ck_kpis] = kpis
             page.data[ck_bar] = act_por_mes

@@ -176,7 +176,7 @@ def build(page: ft.Page, **kwargs) -> ft.Control:
                 )
             ),
             padding=16,
-            alignment=ft.alignment.center
+            alignment=ft.Alignment(0, 0)
         )
 
     contenido = ft.Column(

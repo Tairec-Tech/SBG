@@ -262,19 +262,28 @@ async def main(page: ft.Page):
         """Tras login exitoso: rutear a selección (admin) o directo a su brigada (profesor)."""
         usuario_actual = (page.data or {}).get("usuario_actual", {})
         rol = str(usuario_actual.get("rol", "")).lower()
-        es_admin = rol in ["administrador", "admin", "directivo"]
+        es_admin_local = rol in ["administrador", "admin", "directivo"]
         
-        if es_admin:
-            contenedor_principal.content = screen_brigade_select.build(
-                page,
-                on_select=on_brigada_seleccionada,
-            )
-            page.update()
+        if es_admin_local:
+            # Directivo va directo al dashboard, sin pasar por selección
+            if not isinstance(page.data, dict):
+                page.data = {}
+            page.data["brigada_activa"] = None  # No usa brigada activa
+            aplicar_paleta_neutra(page)
+            
+            vista_actual[0] = "Panel Principal"
+            content_area.bgcolor = COLOR_FONDO_VERDE
+            content_area.content = screen_dashboard.build(page)
+            
+            vista_principal.content = ft.Row([sidebar_container, content_area], expand=True)
+            page.run_task(refresh_sidebar)
+            page.run_task(animar_entrada_dashboard)
         else:
+            # Profesor: flujo actual sin cambios
             from database.crud_brigada import obtener_tipo_brigada_por_id
             id_brigada = usuario_actual.get("Brigada_idBrigada")
             tipo_brigada = obtener_tipo_brigada_por_id(id_brigada) if id_brigada else None
-            on_brigada_seleccionada(tipo_brigada)  # None = sin brigada
+            on_brigada_seleccionada(tipo_brigada)
 
     def on_brigada_seleccionada(brigada_key: str):
         """Usuario seleccionó una brigada → aplicar paleta → transición → dashboard o su brigada."""

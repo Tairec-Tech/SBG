@@ -133,8 +133,8 @@ def build(page: ft.Page, content_area=None, **kwargs) -> ft.Control:
     rol = usuario.get("rol", "")
     user_id = usuario.get("id")
     
-    # Solo el profesor puede crear brigadas; directivo/coordinador solo supervisan
-    puede_crear = es_profesor(rol)
+    # Modelo institucional: las brigadas se crean con la institucion, no desde la UI.
+    puede_crear = False
     
     def on_nuevo(_):
         from forms import abrir_form_brigada_registrar
@@ -245,19 +245,16 @@ def _build_brigade_cards(page, refresh_callback=None, usuario=None):
     user_id = usuario.get("id")
     
     try:
-        _tb = (page.data or {}).get("brigada_activa")
-        if es_admin(rol):
-            brigadas = listar_brigadas(_tb)
-        elif es_profesor(rol) and user_id:
-            institucion_id = usuario.get("institucion_id")
-            if not institucion_id:
-                brigadas = []
-            else:
-                brigadas = listar_brigadas_para_profesor(user_id, institucion_id, _tb)
-            # Solo retener la brigada que *estrictamente* dirija para asegurar el overview
+        from components import resolver_contexto_filtrado
+        ctx = resolver_contexto_filtrado(page)
+        if ctx["modo"] == "sin_acceso":
+            brigadas = []
+        elif ctx["modo"] == "institucional":
+            brigadas = listar_brigadas(institucion_id=ctx["institucion_id"])
+        elif ctx["modo"] == "brigada" and es_profesor(rol):
+            brigadas = listar_brigadas_para_profesor(user_id, ctx["institucion_id"])
             brigadas = [b for b in brigadas if b.get("profesor_id") == user_id]
         else:
-            # Otros roles no ven brigadas en esta pantalla
             brigadas = []
     except Exception:
         brigadas = []

@@ -9,6 +9,7 @@ from database.crud_usuario import (
     crear_usuario, email_ya_existe, cedula_ya_existe, obtener_id_usuario_por_cedula,
     listar_brigadistas, actualizar_usuario, eliminar_usuario, obtener_usuario,
     es_admin, es_profesor, listar_profesores_institucion, listar_alumnos_del_profesor,
+    usuario_ya_existe,
 )
 from theme import (
     COLOR_PRIMARIO,
@@ -42,6 +43,19 @@ _CAMPO_BASE = dict(
 )
 # Dropdown no soporta cursor_color en Flet 0.80.5
 _DROPDOWN_BASE = {k: v for k, v in _CAMPO_BASE.items() if k != "cursor_color"}
+
+
+def _obtener_brigadas_form(page, brigada_rol_id=None):
+    from components import resolver_contexto_filtrado
+    from database.crud_brigada import listar_brigadas
+    ctx = resolver_contexto_filtrado(page)
+    if brigada_rol_id is not None:
+        return listar_brigadas(brigada_rol_id=brigada_rol_id)
+    if ctx["modo"] == "institucional":
+        return listar_brigadas(institucion_id=ctx["institucion_id"])
+    elif ctx["modo"] == "brigada":
+        return listar_brigadas(brigada_rol_id=ctx["brigada_rol_id"])
+    return []
 
 
 def _etiqueta(texto: str) -> ft.Control:
@@ -731,7 +745,7 @@ def abrir_form_brigadista_registrar(page: ft.Page, on_success=None):
 
     brigadas_opciones = []
     try:
-        for b in listar_brigadas((page.data or {}).get("brigada_activa"), brigada_rol_id=brigada_rol_id):
+        for b in _obtener_brigadas_form(page, brigada_rol_id):
             brigadas_opciones.append(ft.dropdown.Option(str(b["idBrigada"]), b["nombre_brigada"] or f"Brigada {b['idBrigada']}"))
     except Exception:
         pass
@@ -871,7 +885,7 @@ def abrir_form_brigadista_modificar(page: ft.Page, brigadista=None, on_success=N
 
     brigadas_opciones = []
     try:
-        for b in listar_brigadas((page.data or {}).get("brigada_activa"), brigada_rol_id=brigada_rol_id):
+        for b in _obtener_brigadas_form(page, brigada_rol_id):
             brigadas_opciones.append(ft.dropdown.Option(str(b["idBrigada"]), b["nombre_brigada"] or f"Brigada {b['idBrigada']}"))
     except Exception:
         pass
@@ -1501,7 +1515,7 @@ def abrir_form_turno(page: ft.Page):
     brigada_rol_id = usuario_actual.get("Brigada_idBrigada") if not es_admin(rol_actual) else None
 
     # ── Dropdown de brigadas reales ──
-    brigadas_bd = listar_brigadas((page.data or {}).get("brigada_activa"), brigada_rol_id=brigada_rol_id)
+    brigadas_bd = _obtener_brigadas_form(page, brigada_rol_id)
     opciones_brigadas = [ft.dropdown.Option(str(bg["idBrigada"]), bg["nombre_brigada"]) for bg in brigadas_bd]
 
     brigada = ft.Dropdown(
@@ -1776,7 +1790,7 @@ def abrir_form_nuevo_reporte(page: ft.Page):
     brigada_rol_id = usuario_actual.get("Brigada_idBrigada") if not es_admin(rol_actual) else None
     
     # Cargar brigadas reales
-    brigadas_bd = listar_brigadas((page.data or {}).get("brigada_activa"), brigada_rol_id=brigada_rol_id)
+    brigadas_bd = _obtener_brigadas_form(page, brigada_rol_id)
     opciones_brigadas = []
     for bg in brigadas_bd:
         opciones_brigadas.append(ft.dropdown.Option(str(bg["idBrigada"]), bg["nombre_brigada"]))
@@ -1976,7 +1990,7 @@ def modal_nuevo_reporte_impacto(page: ft.Page, id_usuario_actual: int, on_succes
     brigada_rol_id = usuario_actual.get("Brigada_idBrigada") if not es_admin(rol_actual) else None
     
     # Brigadas reales
-    brigadas_bd = listar_brigadas((page.data or {}).get("brigada_activa"), brigada_rol_id=brigada_rol_id)
+    brigadas_bd = _obtener_brigadas_form(page, brigada_rol_id)
     opciones_brigadas = [ft.dropdown.Option(str(bg["idBrigada"]), bg["nombre_brigada"]) for bg in brigadas_bd]
 
     brigada_dd = ft.Dropdown(
@@ -2154,11 +2168,11 @@ def abrir_form_profesor_registrar(page: ft.Page, on_success=None):
         brigadas_disp = listar_brigadas_por_institucion(institucion_id, solo_sin_profesor=True)
     except Exception:
         brigadas_disp = []
-    opciones_brigada = [ft.dropdown.Option("", "— Sin asignar brigada —")]
+    opciones_brigada = [ft.dropdown.Option("", "Seleccione una brigada")]
     for b in brigadas_disp:
         opciones_brigada.append(ft.dropdown.Option(str(b["idBrigada"]), b.get("nombre_brigada", f"Brigada {b['idBrigada']}")))
     dropdown_brigada = ft.Dropdown(
-        hint_text="Asignar a brigada (opcional)",
+        hint_text="Asignar a brigada",
         options=opciones_brigada,
         border_color=COLOR_BORDE,
         focused_border_color=COLOR_PRIMARIO,
@@ -2170,56 +2184,83 @@ def abrir_form_profesor_registrar(page: ft.Page, on_success=None):
     )
 
     def on_crear(_):
-        # Validaciones
-        if not nombre.value or not nombre.value.strip():
-            page.snack_bar = ft.SnackBar(ft.Text("El nombre es obligatorio."), bgcolor="#ef4444")
-            page.snack_bar.open = True; page.update(); return
-        if not apellido.value or not apellido.value.strip():
-            page.snack_bar = ft.SnackBar(ft.Text("El apellido es obligatorio."), bgcolor="#ef4444")
-            page.snack_bar.open = True; page.update(); return
-        if not email.value or not email.value.strip():
-            page.snack_bar = ft.SnackBar(ft.Text("El correo electrónico es obligatorio."), bgcolor="#ef4444")
-            page.snack_bar.open = True; page.update(); return
-        if not usuario_str.value or not usuario_str.value.strip():
-            page.snack_bar = ft.SnackBar(ft.Text("El usuario es obligatorio."), bgcolor="#ef4444")
-            page.snack_bar.open = True; page.update(); return
-        if not contrasena.value or len(contrasena.value) < 6:
-            page.snack_bar = ft.SnackBar(ft.Text("La contraseña debe tener al menos 6 caracteres."), bgcolor="#ef4444")
-            page.snack_bar.open = True; page.update(); return
-        if contrasena.value != confirmar.value:
-            page.snack_bar = ft.SnackBar(ft.Text("Las contraseñas no coinciden."), bgcolor="#ef4444")
-            page.snack_bar.open = True; page.update(); return
-        if email_ya_existe(email.value.strip().lower()):
-            page.snack_bar = ft.SnackBar(ft.Text("Ese correo ya está registrado."), bgcolor="#ef4444")
-            page.snack_bar.open = True; page.update(); return
+        btn_registrar.disabled = True
+        btn_registrar.text = "Registrando..."
+        page.update()
 
-        brigada_id = None
-        if dropdown_brigada.value and dropdown_brigada.value.strip():
-            try:
-                brigada_id = int(dropdown_brigada.value)
-            except (ValueError, TypeError):
-                brigada_id = None
+        def _error(mensaje: str):
+            page.snack_bar = ft.SnackBar(ft.Text(mensaje), bgcolor="#ef4444")
+            page.snack_bar.open = True
+            btn_registrar.disabled = False
+            btn_registrar.text = "Registrar"
+            page.update()
 
         try:
+            # Validaciones
+            if not nombre.value or not nombre.value.strip():
+                _error("El nombre es obligatorio.")
+                return
+            if not apellido.value or not apellido.value.strip():
+                _error("El apellido es obligatorio.")
+                return
+            if not email.value or not email.value.strip():
+                _error("El correo electronico es obligatorio.")
+                return
+            if not usuario_str.value or not usuario_str.value.strip():
+                _error("El usuario es obligatorio.")
+                return
+            if not contrasena.value or len(contrasena.value) < 6:
+                _error("La contrasena debe tener al menos 6 caracteres.")
+                return
+            if contrasena.value != confirmar.value:
+                _error("Las contrasenas no coinciden.")
+                return
+
+            email_val = email.value.strip().lower()
+            usuario_val = usuario_str.value.strip().lower()
+            cedula_val = (cedula.value or "").strip() or None
+
+            if email_ya_existe(email_val):
+                _error("Ese correo ya esta registrado.")
+                return
+            if usuario_ya_existe(usuario_val):
+                _error("Ese usuario ya esta registrado.")
+                return
+            if cedula_val and cedula_ya_existe(cedula_val):
+                _error("Esa cedula ya esta registrada.")
+                return
+
+            brigada_id = None
+            if dropdown_brigada.value and dropdown_brigada.value.strip():
+                try:
+                    brigada_id = int(dropdown_brigada.value)
+                except (ValueError, TypeError):
+                    brigada_id = None
+            if not brigada_id:
+                if not brigadas_disp:
+                    _error("No hay brigadas disponibles sin profesor responsable en esta institucion.")
+                else:
+                    _error("Seleccione una brigada para asignar al profesor.")
+                return
+
             crear_profesor_institucional(
                 nombre=nombre.value.strip(),
                 apellido=apellido.value.strip(),
-                email=email.value.strip().lower(),
+                email=email_val,
                 contrasena_plana=contrasena.value,
-                usuario_str=usuario_str.value.strip().lower(),
-                cedula=(cedula.value or "").strip() or None,
+                usuario_str=usuario_val,
+                cedula=cedula_val,
                 institucion_id=institucion_id,
                 brigada_id=brigada_id,
             )
             _cerrar_dialogo(page)
-            page.snack_bar = ft.SnackBar(ft.Text("¡Profesor registrado correctamente!"), bgcolor="#22c55e")
+            page.snack_bar = ft.SnackBar(ft.Text("Profesor registrado correctamente."), bgcolor="#22c55e")
             page.snack_bar.open = True
             if on_success:
                 on_success()
+            page.update()
         except Exception as ex:
-            page.snack_bar = ft.SnackBar(ft.Text(f"Error: {ex}"), bgcolor="#ef4444")
-            page.snack_bar.open = True
-        page.update()
+            _error(f"Error al registrar profesor: {ex}")
 
     contenido = ft.Container(
         content=ft.Column(
@@ -2232,7 +2273,7 @@ def abrir_form_profesor_registrar(page: ft.Page, on_success=None):
                 _campo_con_titulo("Contraseña *", contrasena),
                 _campo_con_titulo("Confirmar contraseña *", confirmar),
                 ft.Container(height=8),
-                _campo_con_titulo("Asignar a brigada (opcional)", dropdown_brigada),
+                _campo_con_titulo("Asignar a brigada *", dropdown_brigada),
             ],
             spacing=0,
         ),
@@ -2250,7 +2291,7 @@ def abrir_form_profesor_registrar(page: ft.Page, on_success=None):
         ),
         actions=[
             ft.TextButton("Cancelar", on_click=lambda e: _cerrar_dialogo(page), style=ft.ButtonStyle(color=COLOR_TEXTO)),
-            ft.FilledButton("Registrar", on_click=on_crear, style=ft.ButtonStyle(bgcolor=COLOR_PRIMARIO, color="white")),
+            btn_registrar := ft.FilledButton("Registrar", on_click=on_crear, style=ft.ButtonStyle(bgcolor=COLOR_PRIMARIO, color="white")),
         ],
     )
     _abrir_dialogo(page, dialogo)

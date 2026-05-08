@@ -388,3 +388,54 @@ def item_actividad_reciente(titulo, fecha, estado, brigada_nombre):
         padding=ft.Padding.symmetric(vertical=12, horizontal=4),
         border=ft.Border(bottom=ft.BorderSide(1, ft.Colors.with_opacity(0.1, COLOR_BORDE))),
     )
+
+
+def resolver_contexto_filtrado(page) -> dict:
+    """Retorna el contexto correcto según el rol del usuario.
+    
+    Regla: FALLA CERRADO. Si no hay contexto válido, retorna modo 'sin_acceso'.
+    - Directivo sin institucion_id -> sin_acceso
+    - Profesor sin Brigada_idBrigada -> sin_brigada (NO cae a institucion_id)
+    """
+    from database.crud_usuario import es_admin
+    usuario = (page.data or {}).get("usuario_actual", {})
+    rol = usuario.get("rol", "")
+    tipo_brigada = (page.data or {}).get("brigada_activa")
+    
+    if es_admin(rol):
+        inst_id = usuario.get("institucion_id")
+        if not inst_id:
+            return {
+                "modo": "sin_acceso",
+                "institucion_id": None,
+                "brigada_activa": None,
+                "tipo_brigada": None,
+                "brigada_rol_id": None,
+                "error": "No se pudo determinar la institución del usuario.",
+            }
+        return {
+            "modo": "institucional",
+            "institucion_id": inst_id,
+            "brigada_activa": tipo_brigada,
+            "tipo_brigada": tipo_brigada,
+            "brigada_rol_id": None,
+        }
+    else:
+        brigada_id = usuario.get("Brigada_idBrigada")
+        if not brigada_id:
+            return {
+                "modo": "sin_brigada",
+                "institucion_id": usuario.get("institucion_id"),
+                "brigada_activa": None,
+                "tipo_brigada": None,
+                "brigada_rol_id": None,
+                "error": "Sin brigada asignada",
+            }
+        return {
+            "modo": "brigada",
+            "institucion_id": usuario.get("institucion_id"),
+            "brigada_activa": tipo_brigada,
+            "tipo_brigada": tipo_brigada,
+            "brigada_rol_id": brigada_id,
+        }
+

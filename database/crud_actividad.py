@@ -8,15 +8,21 @@ que añade Usuario_idUsuarioCreador.
 from database.connection import ejecutar, ejecutar_modificar
 
 
-def obtener_actividades_recientes(limite=5, tipo_brigada=None, solo_usuario_id=None, **kwargs):
+def obtener_actividades_recientes(limite=5, tipo_brigada=None, solo_usuario_id=None, institucion_id=None, **kwargs):
     """
-    Retorna las últimas 'limite' actividades, filtradas por tipo_brigada.
+    Retorna las últimas 'limite' actividades, filtradas por institucion_id o tipo_brigada.
     Si solo_usuario_id se proporciona, solo devuelve las del creador indicado.
     """
     condiciones = []
     params = []
 
-    if tipo_brigada:
+    if institucion_id:
+        condiciones.append("b.Institucion_Educativa_idInstitucion = %s")
+        params.append(institucion_id)
+        if tipo_brigada:
+            condiciones.append("b.tipo_brigada = %s")
+            params.append(tipo_brigada)
+    elif tipo_brigada:
         condiciones.append("b.tipo_brigada = %s")
         params.append(tipo_brigada)
 
@@ -224,14 +230,20 @@ def obtener_actividad_por_id(id_actividad: int) -> dict | None:
         return None
 
 
-def listar_actividades(tipo_brigada=None, brigada_rol_id=None):
-    """Retorna todas las actividades, filtradas por tipo_brigada o brigada_rol_id."""
+def listar_actividades(tipo_brigada=None, brigada_rol_id=None, institucion_id=None):
+    """Retorna todas las actividades, filtradas por institucion_id, brigada_rol_id o tipo_brigada."""
     where_clauses = []
     params = []
     
     if brigada_rol_id is not None:
         where_clauses.append("b.idBrigada = %s")
         params.append(brigada_rol_id)
+    elif institucion_id is not None:
+        where_clauses.append("b.Institucion_Educativa_idInstitucion = %s")
+        params.append(institucion_id)
+        if tipo_brigada:
+            where_clauses.append("b.tipo_brigada = %s")
+            params.append(tipo_brigada)
     elif tipo_brigada:
         where_clauses.append("b.tipo_brigada = %s")
         params.append(tipo_brigada)

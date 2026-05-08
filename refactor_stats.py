@@ -142,11 +142,11 @@ new_build_main = """def _build_con_graficos(page: ft.Page) -> ft.Control:
     is_loaded = bool(page.data.get(loaded_key))
     
     # Contenedores vacíos para reemplazo de contenido dinámico
-    kpis_container = ft.Container(height=110, alignment=ft.alignment.center)
-    bar_container = ft.Container(height=320, alignment=ft.alignment.center)
-    line_container = ft.Container(height=320, alignment=ft.alignment.center)
-    pie_chart_container = ft.Container(height=280, alignment=ft.alignment.center, expand=True)
-    pie_legend_container = ft.Container(alignment=ft.alignment.center)
+    kpis_container = ft.Container(height=110, alignment=ft.Alignment(0, 0))
+    bar_container = ft.Container(height=320, alignment=ft.Alignment(0, 0))
+    line_container = ft.Container(height=320, alignment=ft.Alignment(0, 0))
+    pie_chart_container = ft.Container(height=280, alignment=ft.Alignment(0, 0), expand=True)
+    pie_legend_container = ft.Container(alignment=ft.Alignment(0, 0))
 
     def popular_vistas():
         kpis_data = page.data.get(ck_kpis, {})
