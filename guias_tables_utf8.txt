@@ -1,0 +1,203 @@
+=== TABLE 0 ===
+  R0: ['Version', 'Documento ampliado para carga y consulta en la plataforma SBE']
+  R1: ['Enfoque', 'Once brigadas institucionales, con funciones, protocolos, evidencias e indicadores']
+  R2: ['Uso sugerido', 'Docentes responsables, estudiantes brigadistas, directivos y comités escolares']
+
+=== TABLE 1 ===
+  R0: ['Nro.', 'Brigada', 'Color', 'Eje central']
+  R1: ['1', 'Brigada de Convivencia y Paz', '#64748B', 'Convivencia, mediacion y buen trato.']
+  R2: ['2', 'Brigada Ecológica', '#059669', 'Ambiente, reciclaje y ecoeficiencia.']
+  R3: ['3', 'Brigada de Gestión de Riesgos', '#EA580C', 'Prevención, simulacros y respuesta organizada.']
+  R4: ['4', 'Brigada de Patrulla Escolar', '#DC2626', 'Seguridad vial y cultura peatonal.']
+  R5: ['5', 'Brigada de Primeros Auxilios', '#EAB308', 'Atención primaria y botiquin escolar.']
+  R6: ['6', 'Brigada de Educación Física', '#3B82F6', 'Actividad física, recreación y salud.']
+  R7: ['7', 'Brigada Mi Conuco Escolar Carlos Lanz', '#84CC16', 'Siembra, compostaje y soberanía alimentaria.']
+  R8: ['8', 'Brigada de Patrimonio y Turismo', '#EC4899', 'Identidad local, patrimonio y rutas pedagógicas.']
+  R9: ['9', 'Brigada de Artes Visuales', '#A855F7', 'Expresion visual, carteleras y murales.']
+  R10: ['10', 'Brigada Juventud Patriótica', '#9CA3AF', 'Efemérides, símbolos patrios y participación cívica.']
+  R11: ['11', 'Brigada de Derechos Humanos', '#1E3A8A', 'Derechos, deberes, inclusión y buen trato.']
+
+=== TABLE 2 ===
+  R0: ['Guia 1: Brigada de Convivencia y Paz - Armonía Escolar']
+
+=== TABLE 3 ===
+  R0: ['Elemento', 'Descripción']
+  R1: ['Propósito', 'Erradicar progresivamente el hostigamiento, el acoso escolar, la discriminación, la intolerancia y las formas de violencia cotidiana, promoviendo una cultura de igualdad, buen trato, diálogo y respeto mutuo.']
+  R2: ['Identificacion', 'Brazalete blanco o distintivo institucional claro.']
+  R3: ['Misión', 'Servir como equipo promotor de paz escolar, capaz de detectar conflictos tempranos, orientar a sus compañeros hacia el diálogo y activar los canales institucionales cuando una situación supere la mediación entre pares.']
+  R4: ['Fundamento / enfoque', 'Derecho al buen trato, corresponsabilidad educativa, convivencia escolar, cultura de paz y prevención de violencia. La brigada no sustituye a los docentes, directivos ni órganos competentes; acompaña, orienta y reporta.']
+
+=== TABLE 4 ===
+  R0: ['Actividad', 'Descripción']
+  R1: ['Círculos de diálogo', 'encuentros semanales por aula para conversar sobre respeto, tolerancia, empatía, rumores y comunicación asertiva.']
+  R2: ['Semáforo de convivencia', 'dinámica donde los estudiantes clasifican conductas en verde, amarillo o rojo según su impacto en el grupo.']
+  R3: ['Mural del buen trato', 'cartelera con compromisos escritos por los estudiantes para mejorar el ambiente escolar.']
+
+=== TABLE 5 ===
+  R0: ['Guia 2: Brigada Ecológica - Sustentabilidad en mi Escuela']
+
+=== TABLE 6 ===
+  R0: ['Elemento', 'Descripción']
+  R1: ['Propósito', 'Convertir la institución en un espacio de aprendizaje ambiental, promoviendo hábitos de consumo responsable, cuidado de áreas verdes, reciclaje, ahorro de recursos y participación estudiantil en acciones ecológicas concretas.']
+  R2: ['Identificacion', 'Brazalete verde o distintivo ambiental.']
+  R3: ['Misión', 'Actuar como guardianes de los recursos naturales del plantel y promotores de una cultura ambiental permanente, articulada con la comunidad educativa y con proyectos de aprendizaje productivo.']
+  R4: ['Fundamento / enfoque', 'Educación ambiental, corresponsabilidad ciudadana, protección de recursos naturales y participación escolar. La brigada orienta y promueve acciones, pero no manipula residuos peligrosos ni realiza labores de mantenimiento técnico.']
+
+=== TABLE 7 ===
+  R0: ['Actividad', 'Descripción']
+  R1: ['Mi Escuela, Mi Primer Ecosistema', 'mapeo de zonas verdes, puntos de basura, fuentes de agua y espacios recuperables.']
+  R2: ['Semana del reciclaje', 'competencia sana por secciones para recolectar y clasificar materiales aprovechables.']
+  R3: ['Guardianes del agua', 'campaña para detectar fugas visibles, evitar desperdicio y promover hábitos de ahorro.']
+
+=== TABLE 8 ===
+  R0: ['Guia 3: Brigada de Gestión de Riesgos - Seguridad Integral']
+
+=== TABLE 9 ===
+  R0: ['Elemento', 'Descripción']
+  R1: ['Propósito', 'Preparar a la comunidad educativa para prevenir, reducir y responder organizadamente ante amenazas como sismos, incendios, lluvias intensas, fallas estructurales, accidentes colectivos u otras emergencias escolares.']
+  R2: ['Identificacion', 'Distintivo naranja de seguridad o chaleco institucional.']
+  R3: ['Misión', 'Fortalecer la cultura preventiva del plantel mediante mapas de riesgo, simulacros, rutas de evacuación, inventario de seguridad y coordinación con Primeros Auxilios durante eventos de emergencia.']
+  R4: ['Fundamento / enfoque', 'Gestión integral del riesgo, autoprotección escolar, prevención de emergencias y corresponsabilidad institucional. Esta brigada coordina prevención y evacuación; la atención primaria corresponde a Primeros Auxilios bajo supervisión adulta.']
+
+=== TABLE 10 ===
+  R0: ['Actividad', 'Descripción']
+  R1: ['Detectives de Riesgos con Mapas Digitales', 'recorrido guiado para ubicar amenazas y registrarlas en un mapa institucional.']
+  R2: ['Simulacro con evaluación', 'ejercicio de evacuación con cronometraje, observación de rutas y reporte final.']
+  R3: ['Ruta segura', 'campaña visual para que cada aula conozca su salida y punto de encuentro.']
+
+=== TABLE 11 ===
+  R0: ['Guia 4: Brigada de Patrulla Escolar - Vigilancia Vial y Cultura Preventiva']
+
+=== TABLE 12 ===
+  R0: ['Elemento', 'Descripción']
+  R1: ['Propósito', 'Garantizar el resguardo de estudiantes en entradas, salidas y zonas de circulación peatonal, promoviendo la cultura vial, el orden, la cortesía y el uso responsable de los espacios cercanos al plantel.']
+  R2: ['Identificacion', 'Brazalete o distintivo rojo, señal manual de PARE y elementos autorizados por la institución.']
+  R3: ['Misión', 'Apoyar la movilidad segura de la comunidad educativa mediante orientación vial escolar, organización de filas, observación preventiva y educación del transeúnte responsable.']
+  R4: ['Fundamento / enfoque', 'Seguridad vial escolar, convivencia ciudadana y prevención de accidentes. La patrulla orienta y alerta; no sustituye a autoridades de tránsito ni debe exponerse a circulación peligrosa.']
+
+=== TABLE 13 ===
+  R0: ['Actividad', 'Descripción']
+  R1: ['Pasaporte del Transeúnte Responsable', 'estaciones de aprendizaje con señales, cruces simulados y normas de peatón.']
+  R2: ['Mapa vial escolar', 'identificación de entradas, salidas, paradas, cruces y zonas de riesgo.']
+  R3: ['Campaña de llegada segura', 'mensajes visuales para familias y estudiantes durante la entrada/salida.']
+
+=== TABLE 14 ===
+  R0: ['Guia 5: Brigada de Primeros Auxilios - Atención Primaria y Acompañamiento']
+
+=== TABLE 15 ===
+  R0: ['Elemento', 'Descripción']
+  R1: ['Propósito', 'Brindar apoyo inmediato, responsable y básico ante lesiones leves, malestares o incidentes escolares, acompañando al afectado mientras se activa la ayuda adulta o médica correspondiente.']
+  R2: ['Identificacion', 'Distintivo amarillo o brazalete de apoyo sanitario escolar.']
+  R3: ['Misión', 'Promover una cultura de autocuidado, prevención de accidentes y respuesta inicial ordenada, trabajando coordinadamente con Gestión de Riesgos, docentes y personal directivo.']
+  R4: ['Fundamento / enfoque', 'Derecho a la salud, protección integral de niños, niñas y adolescentes, prevención escolar y corresponsabilidad. La brigada no diagnostica, no medica y no reemplaza al personal de salud.']
+
+=== TABLE 16 ===
+  R0: ['Actividad', 'Descripción']
+  R1: ['Simulacro de traslado', 'práctica supervisada de traslado seguro y comunicación durante una emergencia.']
+  R2: ['Botiquín responsable', 'jornada para revisar insumos permitidos y crear lista de reposición.']
+  R3: ['Prevención en recreo', 'campaña sobre caídas, empujones, hidratación y juegos seguros.']
+
+=== TABLE 17 ===
+  R0: ['Guia 6: Brigada de Educación Física - Movimiento, Recreación y Salud Integral']
+
+=== TABLE 18 ===
+  R0: ['Elemento', 'Descripción']
+  R1: ['Propósito', 'Promover la actividad física, la recreación, el deporte escolar, los juegos tradicionales y los hábitos de vida saludable como parte de la formación integral de los estudiantes.']
+  R2: ['Identificacion', 'Distintivo azul o identificación deportiva institucional.']
+  R3: ['Misión', 'Incentivar la participación activa, inclusiva y segura en actividades deportivas y recreativas, apoyando a docentes en la organización de eventos y en la prevención de lesiones.']
+  R4: ['Fundamento / enfoque', 'Derecho a la recreación, educación física, deporte y salud integral. La brigada apoya actividades pedagógicas y preventivas, sin sustituir al docente especialista.']
+
+=== TABLE 19 ===
+  R0: ['Actividad', 'Descripción']
+  R1: ['Pausas Activas Digitales', 'rutinas breves de movimiento en cambios de hora o momentos autorizados.']
+  R2: ['Festival de juegos tradicionales', 'recuperación de juegos como trompo, perinola, metras, saltos y carreras recreativas.']
+  R3: ['Reto de hábitos saludables', 'registro semanal de hidratación, descanso, actividad física y alimentación balanceada.']
+
+=== TABLE 20 ===
+  R0: ['Guia 7: Brigada Mi Conuco Escolar Carlos Lanz - Agroecología y Soberanía Alimentaria']
+
+=== TABLE 21 ===
+  R0: ['Elemento', 'Descripción']
+  R1: ['Propósito', 'Implementar el programa de siembra escolar como aula abierta para aprender agroecología, producción responsable, cuidado de semillas, compostaje y soberanía alimentaria desde la práctica.']
+  R2: ['Identificacion', 'Distintivo verde oliva o símbolo del conuco escolar.']
+  R3: ['Misión', 'Formar produciendo y producir formando, integrando saberes científicos, populares y comunitarios para transformar espacios escolares en zonas productivas, pedagógicas y biodiversas.']
+  R4: ['Fundamento / enfoque', 'Educación productiva, ambiente, soberanía alimentaria y participación comunitaria. La brigada desarrolla prácticas agroecológicas seguras y supervisadas.']
+
+=== TABLE 22 ===
+  R0: ['Actividad', 'Descripción']
+  R1: ['Círculo del Abono', 'crear compostero con residuos orgánicos autorizados del comedor o áreas verdes.']
+  R2: ['Banco de Semillas Escolar', 'colección identificada de semillas locales con fichas de origen y fecha.']
+  R3: ['Calendario de Siembra', 'cartelera o registro digital de rubros, ciclos, responsables y cosechas.']
+
+=== TABLE 23 ===
+  R0: ['Guia 8: Brigada de Patrimonio y Turismo - Identidad Local y Memoria Comunitaria']
+
+=== TABLE 24 ===
+  R0: ['Elemento', 'Descripción']
+  R1: ['Propósito', 'Fomentar sentido de pertenencia mediante el conocimiento, valoración, protección y difusión del patrimonio histórico, cultural, natural y comunitario del entorno escolar.']
+  R2: ['Identificacion', 'Distintivo rosado o insignia cultural institucional.']
+  R3: ['Misión', 'Investigar, documentar y compartir la memoria local para que los estudiantes reconozcan su comunidad como espacio de identidad, aprendizaje y posible turismo pedagógico.']
+  R4: ['Fundamento / enfoque', 'Patrimonio cultural, memoria histórica, identidad local, participación estudiantil y respeto a la diversidad cultural.']
+
+=== TABLE 25 ===
+  R0: ['Actividad', 'Descripción']
+  R1: ['Cronistas Escolares', 'entrevistas a vecinos o docentes para rescatar relatos de la comunidad.']
+  R2: ['Mapa de identidad', 'ubicación de sitios importantes en un plano escolar o comunitario.']
+  R3: ['Museo vivo', 'exposición de tradiciones, fotografías y objetos con explicación estudiantil.']
+
+=== TABLE 26 ===
+  R0: ['Guia 9: Brigada de Artes Visuales - Creatividad, Comunicación e Identidad']
+
+=== TABLE 27 ===
+  R0: ['Elemento', 'Descripción']
+  R1: ['Propósito', 'Estimular la expresión estética, la creatividad, la comunicación visual y la participación cultural, utilizando las artes como herramienta para fortalecer valores, identidad y pensamiento crítico.']
+  R2: ['Identificacion', 'Distintivo lila o credencial artística institucional.']
+  R3: ['Misión', 'Convertir los espacios escolares en escenarios de expresión artística responsable, apoyando campañas educativas, efemérides, carteleras, murales y exposiciones estudiantiles.']
+  R4: ['Fundamento / enfoque', 'Derecho a la cultura, recreación, expresión artística y participación escolar. La brigada promueve arte educativo, respetuoso e inclusivo.']
+
+=== TABLE 28 ===
+  R0: ['Actividad', 'Descripción']
+  R1: ['Pinceladas de Paz', 'mural colectivo sobre convivencia, buen trato y respeto.']
+  R2: ['Galería de Efemérides', 'exposición mensual vinculada a fechas culturales o históricas.']
+  R3: ['Cartelera Viva', 'renovación periódica de carteleras con infografías hechas por estudiantes.']
+
+=== TABLE 29 ===
+  R0: ['Guia 10: Brigada Juventud Patriótica - Identidad Naciónal y Participación Cívica']
+
+=== TABLE 30 ===
+  R0: ['Elemento', 'Descripción']
+  R1: ['Propósito', 'Fortalecer la conciencia histórica, el respeto por los símbolos patrios, la memoria colectiva, las efemérides naciónales y la participación cívica responsable dentro de la escuela.']
+  R2: ['Identificacion', 'Distintivo gris o símbolo cívico institucional.']
+  R3: ['Misión', 'Promover actos cívicos, investigaciones históricas, conversatorios y actividades formativas que ayuden a comprender la identidad naciónal de manera crítica, respetuosa y educativa.']
+  R4: ['Fundamento / enfoque', 'Formación ciudadana, identidad naciónal, cultura cívica y participación estudiantil. La brigada debe mantener enfoque pedagógico, plural y respetuoso.']
+
+=== TABLE 31 ===
+  R0: ['Actividad', 'Descripción']
+  R1: ['Tribuna Bolivariana', 'conversatorios sobre pensamiento histórico y ciudadanía responsable.']
+  R2: ['Calendario Patrio Escolar', 'planificación anual de efemérides y actos cívicos.']
+  R3: ['Voces de la Historia', 'dramatizaciones breves de personajes o hechos relevantes con reflexión final.']
+
+=== TABLE 32 ===
+  R0: ['Guia 11: Brigada de Derechos Humanos - Dignidad, Inclusión y Buen Trato']
+
+=== TABLE 33 ===
+  R0: ['Elemento', 'Descripción']
+  R1: ['Propósito', 'Promover el conocimiento y ejercicio responsable de derechos, deberes, igualdad, inclusión, buen trato y mecanismos de protección dentro del entorno educativo.']
+  R2: ['Identificacion', 'Distintivo azul oscuro o insignia de derechos y deberes.']
+  R3: ['Misión', 'Actuar como equipo promotor de dignidad humana, justicia escolar, participación y orientación básica, canalizando situaciones sensibles hacia adultos responsables e instancias institucionales.']
+  R4: ['Fundamento / enfoque', 'Protección integral de niños, niñas y adolescentes, igualdad, no discriminación, buen trato y participación. La brigada orienta y reporta; no investiga ni sanciona por cuenta propia.']
+
+=== TABLE 34 ===
+  R0: ['Actividad', 'Descripción']
+  R1: ['Mi Voz Cuenta', 'trípticos, volantes digitales o charlas sobre derechos y deberes.']
+  R2: ['Mapa de Protección Escolar', 'identificación de adultos, espacios y canales de ayuda dentro del plantel.']
+  R3: ['Semana de la Inclusión', 'actividades para valorar diversidad, accesibilidad, respeto y participación.']
+
+=== TABLE 35 ===
+  R0: ['Término', 'Definición']
+  R1: ['Brigadista', 'Estudiante participante de una brigada escolar, bajo orientación adulta.']
+  R2: ['Docente responsable', 'Profesor o adulto asignado para coordinar y supervisar la brigada.']
+  R3: ['Actividad planificada', 'Acción organizada con objetivo, fecha, brigada responsable, evidencia y resultado esperado.']
+  R4: ['Evidencia', 'Registro que demuestra la ejecucion de una actividad: fotos, bitácoras, reportes o indicadores.']
+  R5: ['Empty state', 'Pantalla informativa cuando el usuario no tiene datos o permisos suficientes para operar.']
+

@@ -52,7 +52,8 @@ def _obtener_usuario_actual(page: ft.Page) -> dict:
 def _abrir_modal_actividad(page: ft.Page, on_success=None, usuario_actual=None, actividad=None):
     """
     Abre un diálogo para crear o editar una actividad planificada.
-    Si 'actividad' es un dict, precarga datos (deserializando JSON si existe).
+    - Creación: campos principales + sección avanzada colapsable.
+    - Edición: precarga datos; muestra Resultado Obtenido solo si estado es Completada.
     """
     usuario_actual = usuario_actual or {}
     rol = usuario_actual.get("rol", "")
@@ -60,11 +61,12 @@ def _abrir_modal_actividad(page: ft.Page, on_success=None, usuario_actual=None, 
     editando = actividad is not None
     from datetime import datetime
     import util_json_plan
+    from components import resolver_contexto_filtrado
 
-    # Deserializar metadata
     desc_raw = actividad.get("descripcion", "") if editando else ""
     plan_data = util_json_plan.deserializar_plan(desc_raw)
 
+    # ── Estilos con hint_style corregido ──
     _CAMPO = dict(
         border_color=COLOR_BORDE,
         focused_border_color=COLOR_PRIMARIO,
@@ -72,27 +74,34 @@ def _abrir_modal_actividad(page: ft.Page, on_success=None, usuario_actual=None, 
         text_size=14,
         color=COLOR_TEXTO,
         cursor_color=COLOR_PRIMARIO,
+        hint_style=ft.TextStyle(size=14, color=COLOR_TEXTO_SEC),
+        label_style=ft.TextStyle(size=13, color=COLOR_TEXTO_SEC),
     )
     _DROPDOWN = dict(
-        border_color=COLOR_BORDE, focused_border_color=COLOR_PRIMARIO,
-        text_size=14, color=COLOR_TEXTO, border_radius=RADIO, dense=True,
+        border_color=COLOR_BORDE,
+        focused_border_color=COLOR_PRIMARIO,
+        text_size=14,
+        color=COLOR_TEXTO,
+        border_radius=RADIO,
+        dense=True,
+        hint_style=ft.TextStyle(size=14, color=COLOR_TEXTO_SEC),
+        label_style=ft.TextStyle(size=13, color=COLOR_TEXTO_SEC),
     )
 
-    # ── CAMPOS NATIVOS ──
+    # ── CAMPOS PRINCIPALES ──
     titulo_campo = ft.TextField(
         hint_text="Nombre de la actividad",
         value=actividad.get("titulo", "") if editando else "",
-        content_padding=ft.Padding(14, 14),
-        **_CAMPO,
+        content_padding=ft.Padding(14, 14), **_CAMPO,
     )
-
-    # ── CAMPOS ESTRUCTURADOS (JSON) ──
     objetivo_campo = ft.TextField(
         hint_text="Objetivo central o plan de acción",
         value=plan_data.get("objetivo_plan", ""),
         multiline=True, min_lines=2, max_lines=4,
         content_padding=ft.Padding(14, 14), **_CAMPO,
     )
+
+    # ── CAMPOS AVANZADOS ──
     momento_escolar_campo = ft.Dropdown(
         options=[ft.dropdown.Option(x) for x in ["Ordinario", "Regreso a Clases", "Cierre de Proyecto", "Semana Aniversario", "Vacaciones"]],
         value=plan_data.get("momento_escolar") or "Ordinario",
@@ -108,16 +117,16 @@ def _abrir_modal_actividad(page: ft.Page, on_success=None, usuario_actual=None, 
         value=plan_data.get("efemeride", ""),
         content_padding=ft.Padding(14, 14), **_CAMPO,
     )
+    nivel_educativo_campo = ft.Dropdown(
+        options=[ft.dropdown.Option(x) for x in ["Integral", "Inicial", "Primaria", "Media General"]],
+        value=plan_data.get("nivel_educativo") or "Integral",
+        content_padding=ft.Padding(12, 14), **_DROPDOWN,
+    )
     necesidad_campo = ft.TextField(
         hint_text="Necesidad detectada",
         value=plan_data.get("necesidad_detectada", ""),
         multiline=True, min_lines=2, max_lines=3,
         content_padding=ft.Padding(14, 14), **_CAMPO,
-    )
-    nivel_educativo_campo = ft.Dropdown(
-        options=[ft.dropdown.Option(x) for x in ["Integral", "Inicial", "Primaria", "Media General"]],
-        value=plan_data.get("nivel_educativo") or "Integral",
-        content_padding=ft.Padding(12, 14), **_DROPDOWN,
     )
     resultado_esperado_campo = ft.TextField(
         hint_text="¿Qué espera lograr al finalizar?",
@@ -125,14 +134,18 @@ def _abrir_modal_actividad(page: ft.Page, on_success=None, usuario_actual=None, 
         multiline=True, min_lines=2, max_lines=3,
         content_padding=ft.Padding(14, 14), **_CAMPO,
     )
+
+    # ── Resultado Obtenido: solo en edición de actividad Completada ──
+    estado_actual = actividad.get("estado", "Planificada") if editando else "Planificada"
+    mostrar_resultado_obtenido = editando and estado_actual == "Completada"
     resultado_obtenido_campo = ft.TextField(
-        hint_text="Resumen del resultado (si ya finalizó)",
+        hint_text="Resumen del resultado obtenido",
         value=plan_data.get("resultado_obtenido", ""),
         multiline=True, min_lines=2, max_lines=3,
         content_padding=ft.Padding(14, 14), **_CAMPO,
     )
 
-    # ── DatePicker nativo para fechas ──
+    # ── DatePicker ──
     _MESES = {1:"Ene",2:"Feb",3:"Mar",4:"Abr",5:"May",6:"Jun",
               7:"Jul",8:"Ago",9:"Sep",10:"Oct",11:"Nov",12:"Dic"}
 
@@ -185,18 +198,13 @@ def _abrir_modal_actividad(page: ft.Page, on_success=None, usuario_actual=None, 
             page.update()
 
     date_picker_ini = ft.DatePicker(
-        first_date=date(2024, 1, 1),
-        last_date=date(2030, 12, 31),
-        value=_fecha_ini_default,
-        on_change=_on_fecha_ini_change,
+        first_date=date(2024, 1, 1), last_date=date(2030, 12, 31),
+        value=_fecha_ini_default, on_change=_on_fecha_ini_change,
     )
     date_picker_fin = ft.DatePicker(
-        first_date=date(2024, 1, 1),
-        last_date=date(2030, 12, 31),
-        value=_fecha_fin_default,
-        on_change=_on_fecha_fin_change,
+        first_date=date(2024, 1, 1), last_date=date(2030, 12, 31),
+        value=_fecha_fin_default, on_change=_on_fecha_fin_change,
     )
-
     page.overlay.append(date_picker_ini)
     page.overlay.append(date_picker_fin)
 
@@ -222,46 +230,55 @@ def _abrir_modal_actividad(page: ft.Page, on_success=None, usuario_actual=None, 
         padding=12, border=ft.Border.all(1, COLOR_BORDE), border_radius=RADIO, bgcolor=COLOR_CARD, on_click=_abrir_fecha_fin, ink=True,
     )
 
+    # ── Brigada: resolver según rol ──
     brigada_id_fija = None
     dd_brigada = None
     brigada_info_text = None
+    brigada_bloqueada = False  # True si directivo sin brigadas
+
+    ctx = resolver_contexto_filtrado(page)
 
     if editando:
         brigada_id_fija = actividad.get("Brigada_idBrigada")
         nombre_brigada = actividad.get("nombre_brigada", "Brigada")
         brigada_info_text = ft.Container(
-            content=ft.Row([ft.Icon(ft.Icons.SHIELD_OUTLINED, size=16, color=COLOR_PRIMARIO), ft.Text(f"Brigada: {nombre_brigada}", size=14, weight="w600", color=COLOR_PRIMARIO)], spacing=8),
-            padding=14, bgcolor="#e8f5e9", border_radius=RADIO, border=ft.Border.all(1, COLOR_PRIMARIO),
+            content=ft.Row([ft.Icon(ft.Icons.SHIELD_OUTLINED, size=16, color=COLOR_PRIMARIO), ft.Text(f"{nombre_brigada}", size=14, weight="w600", color=COLOR_PRIMARIO)], spacing=8),
+            padding=14, bgcolor=ft.Colors.with_opacity(0.08, COLOR_PRIMARIO), border_radius=RADIO, border=ft.Border.all(1, COLOR_PRIMARIO),
         )
+    elif ctx["modo"] in ["sin_acceso", "sin_brigada"]:
+        brigada_info_text = ft.Text("No tienes brigadas asignadas o sin acceso.", color="#ef4444", italic=True)
+        brigada_bloqueada = True
+    elif ctx["modo"] == "brigada" and es_profesor(rol):
+        # Profesor: chip readonly con ctx["brigada_rol_id"]
+        brigada_id_fija = ctx.get("brigada_rol_id")
+        if brigada_id_fija:
+            try:
+                brigadas = crud_brigada.listar_brigadas(brigada_rol_id=brigada_id_fija)
+                nombre_b = brigadas[0]["nombre_brigada"] if brigadas else f"Brigada #{brigada_id_fija}"
+            except Exception:
+                nombre_b = f"Brigada #{brigada_id_fija}"
+            brigada_info_text = ft.Container(
+                content=ft.Row([ft.Icon(ft.Icons.SHIELD_OUTLINED, size=16, color=COLOR_PRIMARIO), ft.Text(f"{nombre_b} (automática)", size=14, weight="w600", color=COLOR_PRIMARIO)], spacing=8),
+                padding=14, bgcolor=ft.Colors.with_opacity(0.08, COLOR_PRIMARIO), border_radius=RADIO, border=ft.Border.all(1, COLOR_PRIMARIO),
+            )
+        else:
+            brigada_info_text = ft.Text("No tienes brigadas asignadas.", color="#ef4444", italic=True)
+            brigada_bloqueada = True
     else:
+        # Directivo: dropdown filtrado por institución
         try:
-            from components import resolver_contexto_filtrado
-            ctx = resolver_contexto_filtrado(page)
-            if ctx["modo"] in ["sin_acceso", "sin_brigada"]:
-                brigada_info_text = ft.Text("No tienes brigadas asignadas o sin acceso.", color="#ef4444", italic=True)
-            elif ctx["modo"] == "brigada" and es_profesor(rol) and user_id:
-                todas = crud_brigada.listar_brigadas_para_profesor(user_id, ctx["institucion_id"])
-                mis_brigadas = [b for b in todas if b.get("es_propia", False) or b.get("profesor_id") == user_id]
-
-                if len(mis_brigadas) == 1:
-                    brigada_id_fija = mis_brigadas[0]["idBrigada"]
-                    brigada_info_text = ft.Container(
-                        content=ft.Row([ft.Icon(ft.Icons.SHIELD_OUTLINED, size=16, color=COLOR_PRIMARIO), ft.Text(f"{mis_brigadas[0]['nombre_brigada']} (automática)", size=14, weight="w600", color=COLOR_PRIMARIO)], spacing=8),
-                        padding=14, bgcolor="#e8f5e9", border_radius=RADIO, border=ft.Border.all(1, COLOR_PRIMARIO),
-                    )
-                elif len(mis_brigadas) > 1:
-                    opciones = [ft.dropdown.Option(str(b["idBrigada"]), b["nombre_brigada"]) for b in mis_brigadas]
-                    dd_brigada = ft.Dropdown(options=opciones, value=opciones[0].key, content_padding=ft.Padding(12, 14), **_DROPDOWN)
-                else:
-                    brigada_info_text = ft.Text("No tienes brigadas asignadas.", color="#ef4444", italic=True)
-            else:
-                brigadas_disponibles = crud_brigada.listar_brigadas(institucion_id=ctx.get("institucion_id"))
+            brigadas_disponibles = crud_brigada.listar_brigadas(institucion_id=ctx.get("institucion_id"))
+            if brigadas_disponibles:
                 opciones = [ft.dropdown.Option(str(b["idBrigada"]), b["nombre_brigada"]) for b in brigadas_disponibles]
-                dd_brigada = ft.Dropdown(hint_text="Seleccione", options=opciones, value=opciones[0].key if opciones else None, content_padding=ft.Padding(12, 14), **_DROPDOWN)
+                dd_brigada = ft.Dropdown(hint_text="Seleccione brigada", options=opciones, value=opciones[0].key, content_padding=ft.Padding(12, 14), **_DROPDOWN)
+            else:
+                brigada_info_text = ft.Text("No hay brigadas institucionales disponibles para planificar actividades.", color="#ef4444", italic=True, size=13)
+                brigada_bloqueada = True
         except Exception as e:
             brigada_info_text = ft.Text(str(e), size=13, color="#ef4444", italic=True)
+            brigada_bloqueada = True
 
-    estado_actual = actividad.get("estado", "Planificada") if editando else "Planificada"
+    # ── Estado ──
     dd_estado = ft.Dropdown(
         options=[ft.dropdown.Option("Planificada"), ft.dropdown.Option("En Progreso"), ft.dropdown.Option("Completada")],
         value=estado_actual, content_padding=ft.Padding(12, 14), **_DROPDOWN,
@@ -272,12 +289,69 @@ def _abrir_modal_actividad(page: ft.Page, on_success=None, usuario_actual=None, 
         if dd_brigada and dd_brigada.value: return int(dd_brigada.value)
         return None
 
+    # ── Toggle sección avanzada ──
+    _avanzado_state = {"abierto": editando}  # Expandido por defecto al editar
+
+    campos_avanzados = ft.Column([
+        ft.Row([ft.Container(_campo_con_titulo("Momento Escolar", momento_escolar_campo), expand=True), ft.Container(width=12), ft.Container(_campo_con_titulo("Origen", origen_campo), expand=True)], spacing=0),
+        ft.Row([ft.Container(_campo_con_titulo("Efeméride (opcional)", efemeride_campo), expand=True), ft.Container(width=12), ft.Container(_campo_con_titulo("Nivel Educativo", nivel_educativo_campo), expand=True)], spacing=0),
+        _campo_con_titulo("Necesidad Detectada", necesidad_campo),
+        _campo_con_titulo("Resultado Esperado", resultado_esperado_campo),
+    ], spacing=0, visible=_avanzado_state["abierto"])
+
+    icono_toggle = ft.Icon(
+        ft.Icons.EXPAND_LESS if _avanzado_state["abierto"] else ft.Icons.EXPAND_MORE,
+        size=20, color=COLOR_PRIMARIO,
+    )
+    texto_toggle = ft.Text(
+        "Detalles de planificación institucional",
+        size=13, weight="w600", color=COLOR_PRIMARIO,
+    )
+    badge_campos = ft.Text("6 campos opcionales", size=11, color=COLOR_TEXTO_SEC, italic=True)
+
+    def _toggle_avanzado(_):
+        _avanzado_state["abierto"] = not _avanzado_state["abierto"]
+        campos_avanzados.visible = _avanzado_state["abierto"]
+        icono_toggle.icon = ft.Icons.EXPAND_LESS if _avanzado_state["abierto"] else ft.Icons.EXPAND_MORE
+        page.update()
+
+    toggle_bar = ft.Container(
+        content=ft.Row([icono_toggle, texto_toggle, ft.Container(expand=True), badge_campos], spacing=8, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+        padding=ft.Padding(12, 10, 12, 10),
+        border_radius=RADIO,
+        border=ft.Border.all(1, COLOR_BORDE),
+        bgcolor=ft.Colors.with_opacity(0.03, COLOR_PRIMARIO),
+        on_click=_toggle_avanzado,
+        ink=True,
+    )
+
+    # ── Guardar ──
     def on_guardar(_):
+        # Validación: título
         if not titulo_campo.value or not titulo_campo.value.strip():
             page.snack_bar = ft.SnackBar(ft.Text("El título es obligatorio."), bgcolor="#ef4444")
             page.snack_bar.open = True
             page.update()
             return
+        # Validación: objetivo
+        if not objetivo_campo.value or not objetivo_campo.value.strip():
+            page.snack_bar = ft.SnackBar(ft.Text("Debe indicar el objetivo o plan de acción de la actividad."), bgcolor="#ef4444")
+            page.snack_bar.open = True
+            page.update()
+            return
+        # Validación: fechas
+        fi, ff = _fecha_ini_sel["valor"], _fecha_fin_sel["valor"]
+        if not fi or not ff:
+            page.snack_bar = ft.SnackBar(ft.Text("Fechas incompletas."), bgcolor="#ef4444")
+            page.snack_bar.open = True
+            page.update()
+            return
+        if ff < fi:
+            page.snack_bar = ft.SnackBar(ft.Text("La fecha de fin no puede ser anterior a la fecha de inicio."), bgcolor="#ef4444")
+            page.snack_bar.open = True
+            page.update()
+            return
+        # Validación: brigada
         id_brigada = _get_brigada_id()
         if not id_brigada:
             page.snack_bar = ft.SnackBar(ft.Text("No hay brigada asignada."), bgcolor="#ef4444")
@@ -285,23 +359,20 @@ def _abrir_modal_actividad(page: ft.Page, on_success=None, usuario_actual=None, 
             page.update()
             return
 
-        fi, ff = _fecha_ini_sel["valor"], _fecha_fin_sel["valor"]
-        if not fi or not ff:
-            page.snack_bar = ft.SnackBar(ft.Text("Fechas incompletas."), bgcolor="#ef4444")
-            page.snack_bar.open = True
-            page.update()
-            return
-
-        # Construir JSON estructurado
+        # Serializar JSON — preservar resultado_obtenido si campo no visible
         nuevo_plan = {
-            "momento_escolar": momento_escolar_campo.value,
-            "origen_actividad": origen_campo.value,
-            "efemeride": efemeride_campo.value.strip(),
-            "necesidad_detectada": necesidad_campo.value.strip(),
+            "momento_escolar": momento_escolar_campo.value or "Ordinario",
+            "origen_actividad": origen_campo.value or "Cronograma",
+            "efemeride": (efemeride_campo.value or "").strip(),
+            "necesidad_detectada": (necesidad_campo.value or "").strip(),
             "objetivo_plan": objetivo_campo.value.strip(),
-            "nivel_educativo": nivel_educativo_campo.value,
-            "resultado_esperado": resultado_esperado_campo.value.strip(),
-            "resultado_obtenido": resultado_obtenido_campo.value.strip()
+            "nivel_educativo": nivel_educativo_campo.value or "Integral",
+            "resultado_esperado": (resultado_esperado_campo.value or "").strip(),
+            "resultado_obtenido": (
+                resultado_obtenido_campo.value.strip()
+                if mostrar_resultado_obtenido
+                else plan_data.get("resultado_obtenido", "")
+            ),
         }
         json_desc = util_json_plan.serializar_plan(nuevo_plan)
 
@@ -341,23 +412,31 @@ def _abrir_modal_actividad(page: ft.Page, on_success=None, usuario_actual=None, 
             page.snack_bar.open = True
         page.update()
 
+    # ── Construir campos del modal ──
     campos = [
         _campo_con_titulo("Título de la Actividad *", titulo_campo),
-        ft.Row([ft.Container(_campo_con_titulo("Fecha Inicio", boton_fecha_ini), expand=True), ft.Container(width=12), ft.Container(_campo_con_titulo("Fecha Fin", boton_fecha_fin), expand=True)], spacing=0),
-        ft.Row([ft.Container(_campo_con_titulo("Momento Escolar", momento_escolar_campo), expand=True), ft.Container(width=12), ft.Container(_campo_con_titulo("Origen", origen_campo), expand=True)], spacing=0),
-        ft.Row([ft.Container(_campo_con_titulo("Efeméride (opcional)", efemeride_campo), expand=True), ft.Container(width=12), ft.Container(_campo_con_titulo("Nivel Educativo", nivel_educativo_campo), expand=True)], spacing=0),
-        _campo_con_titulo("Necesidad Detectada", necesidad_campo),
-        _campo_con_titulo("Objetivo / Plan de Acción", objetivo_campo),
-        _campo_con_titulo("Resultado Esperado", resultado_esperado_campo),
-        _campo_con_titulo("Resultado Obtenido (si finalizó)", resultado_obtenido_campo),
+        ft.Row([ft.Container(_campo_con_titulo("Fecha Inicio *", boton_fecha_ini), expand=True), ft.Container(width=12), ft.Container(_campo_con_titulo("Fecha Fin *", boton_fecha_fin), expand=True)], spacing=0),
+        _campo_con_titulo("Objetivo / Plan de Acción *", objetivo_campo),
     ]
 
+    # Brigada
     if brigada_info_text:
         campos.append(_campo_con_titulo("Brigada Asignada", brigada_info_text))
     elif dd_brigada:
-        campos.append(_campo_con_titulo("Brigada Responsable", dd_brigada))
+        campos.append(_campo_con_titulo("Brigada Responsable *", dd_brigada))
 
-    campos.append(_campo_con_titulo("Estado de la Actividad", dd_estado, espaciado_abajo=0))
+    # Estado
+    campos.append(_campo_con_titulo("Estado de la Actividad", dd_estado))
+
+    # Resultado Obtenido (solo edición de Completada)
+    if mostrar_resultado_obtenido:
+        campos.append(_campo_con_titulo("Resultado Obtenido", resultado_obtenido_campo))
+
+    # Separador + toggle avanzado
+    campos.append(ft.Container(height=4))
+    campos.append(toggle_bar)
+    campos.append(ft.Container(height=8))
+    campos.append(campos_avanzados)
 
     def _on_cancelar(e):
         _limpiar_overlay()

@@ -201,7 +201,7 @@ async def build_sidebar(page: ft.Page, contenido_area: ft.Container, vista_actua
         on_click=lambda e: on_logout(),
     )
 
-    sidebar = ft.Column(
+    header_section = ft.Column(
         [
             ft.Container(height=24),
             ft.Row(
@@ -221,11 +221,20 @@ async def build_sidebar(page: ft.Page, contenido_area: ft.Container, vista_actua
             ),
             ft.Container(height=28),
             ft.Divider(height=1, color=ft.Colors.with_opacity(0.2, "white")),
-            ft.Container(height=16),
-        ]
-        + nav_items
-        + [
-            ft.Container(expand=True),
+            ft.Container(height=8),
+        ],
+        spacing=0,
+    )
+
+    menu_scrollable = ft.Column(
+        nav_items,
+        spacing=0,
+        expand=True,
+        scroll=ft.ScrollMode.AUTO,
+    )
+
+    footer_section = ft.Column(
+        [
             ft.Divider(height=1, color=ft.Colors.with_opacity(0.2, "white")),
             ft.Container(height=12),
             modo_toggle,
@@ -234,6 +243,15 @@ async def build_sidebar(page: ft.Page, contenido_area: ft.Container, vista_actua
             ft.Container(height=12),
             btn_logout,
             ft.Container(height=24),
+        ],
+        spacing=0,
+    )
+
+    sidebar = ft.Column(
+        [
+            header_section,
+            menu_scrollable,
+            footer_section,
         ],
         spacing=0,
         expand=True,

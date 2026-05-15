@@ -275,7 +275,7 @@ async def main(page: ft.Page):
             content_area.bgcolor = COLOR_FONDO_VERDE
             content_area.content = screen_dashboard.build(page)
             
-            vista_principal.content = ft.Row([sidebar_container, content_area], expand=True)
+            vista_principal.content = ft.Row([sidebar_container, content_area], expand=True, vertical_alignment=ft.CrossAxisAlignment.STRETCH)
             page.run_task(refresh_sidebar)
             page.run_task(animar_entrada_dashboard)
         else:
@@ -310,7 +310,7 @@ async def main(page: ft.Page):
             vista_actual[0] = "Mi Brigada"
             content_area.content = screen_brigades.build(page, content_area=content_area)
             
-        vista_principal.content = ft.Row([sidebar_container, content_area], expand=True)
+        vista_principal.content = ft.Row([sidebar_container, content_area], expand=True, vertical_alignment=ft.CrossAxisAlignment.STRETCH)
         page.run_task(refresh_sidebar)
         page.run_task(animar_entrada_dashboard)
 
@@ -327,7 +327,7 @@ async def main(page: ft.Page):
         page.update()
 
     contenedor_principal.content = build_login_view()
-    vista_principal.content = ft.Row([sidebar_container, content_area], expand=True)
+    vista_principal.content = ft.Row([sidebar_container, content_area], expand=True, vertical_alignment=ft.CrossAxisAlignment.STRETCH)
 
     async def refresh_sidebar():
         log("refresh_sidebar: construyendo sidebar...")

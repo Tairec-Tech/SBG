@@ -1,7 +1,9 @@
-"""Contenido Educativo — guías y recursos ampliadas por rol de servicio."""
+"""Contenido Educativo — guías operativas y pedagógicas de las 11 brigadas escolares."""
 
 import flet as ft
+
 from theme import (
+    BRIGADAS,
     COLOR_PRIMARIO,
     COLOR_TEXTO,
     COLOR_TEXTO_SEC,
@@ -9,186 +11,99 @@ from theme import (
     COLOR_BORDE,
     COLOR_FONDO_VERDE,
     get_sombra_card,
+    get_sombra_suave,
 )
-from components import titulo_pagina, card_principal
-
-GUIAS_BRIGADAS = [
-    {
-        "titulo": "Brigada de Convivencia y Paz (Armonía Escolar)",
-        "tab_name": "Convivencia y Paz",
-        "icon": ft.Icons.HANDSHAKE_OUTLINED,
-        "color_base": "#64748b",
-        "color_dark": "#475569",
-        "proposito": "Erradicar de manera permanente el hostigamiento, el acoso escolar (bullying) y la intolerancia, promoviendo una cultura de igualdad y respeto mutuo.",
-        "identificacion": "Brazalete de color BLANCO.",
-        "fundamento_legal": "Ley Constitucional Contra el Odio y artículo 32-A de la LOPNNA, referente al derecho al buen trato, convivencia sana y protección integral en el entorno escolar.",
-        "mision": "Actuar como una brigada de acompañamiento y prevención que favorece el buen clima escolar, detecta señales tempranas de conflicto, promueve el respeto entre pares y canaliza situaciones reales.",
-        "uso_plataforma": "Registrar actividades de convivencia, reportes de incidencias relevantes, seguimiento de situaciones y evidencias de campañas, charlas o mediaciones.",
-        "actividad_sugerida": "Círculos de diálogo semanales o quincenales sobre tolerancia, empatía, resolución pacífica de conflictos y comunicación asertiva.",
-        "objetivo_formativo": "Desarrollar habilidades de escucha activa, mediación básica, identificación de señales de conflicto y responsabilidad ética en el trato cotidiano.",
-        "recomendaciones": [
-            "Escuchar primero y emitir juicios después. No tomar partido sin conocer los hechos.",
-            "Proteger la dignidad de las personas involucradas.",
-            "Escalar oportunamente casos graves, de violencia o amenazas.",
-            "Registrar únicamente hechos observables y no opiniones personales en la plataforma."
-        ],
-        "secciones": [
-            {
-                "titulo": "Protocolo de actuación",
-                "items": [
-                    "Detección: Observar señales tempranas de aislamiento o agresiones.",
-                    "Abordaje Primario: Aplicar la técnica 'Yo siento, yo necesito'.",
-                    "Mediación entre Pares: Actuar como puente de diálogo sin imponer soluciones.",
-                    "Reporte: Escalar y registrar eventos que requieran intervención institucional."
-                ]
-            }
-        ]
-    },
-    {
-        "titulo": "Brigada Ecológica (Sustentabilidad en mi Escuela)",
-        "tab_name": "Ecológica",
-        "icon": ft.Icons.ECO_OUTLINED,
-        "color_base": "#059669",
-        "color_dark": "#047857",
-        "proposito": "Transformar la institución en un modelo de gestión ambiental, promoviendo hábitos de consumo responsable y la soberanía alimentaria desde el aula.",
-        "identificacion": "Brazalete de color VERDE.",
-        "fundamento_legal": "Marco orientador institucional de educación ambiental y participación estudiantil.",
-        "mision": "Ser guardianes de los recursos naturales del plantel y motores de una cultura ambiental sostenible en el tiempo.",
-        "uso_plataforma": "Mantener una 'Bitácora Verde' con registros de material reciclado, auditorías de ecoeficiencia, impacto del conuco escolar y evidencias de campañas.",
-        "actividad_sugerida": "'Mi Escuela, Mi Primer Ecosistema': diagnosticar un área común, formular e implementar mejoras, registrando los resultados progresivamente.",
-        "objetivo_formativo": "Desarrollar hábitos de trabajo colaborativo, cuidado ambiental y medición básica de resultados, aprendiendo la sostenibilidad desde la práctica activa.",
-        "recomendaciones": [
-            "Evitar limitarse a solo la limpieza; aportar valor organizando y educando.",
-            "Traducir las acciones en indicadores simples (kilos de material, aulas auditadas).",
-            "Dar continuidad semanal a las acciones, porque el impacto es sumativo.",
-            "Involucrar a docentes mediante retos por secciones."
-        ],
-        "secciones": [
-            {
-                "titulo": "Funciones detalladas",
-                "items": [
-                    "Puntos limpios: Supervisar la correcta separación de estaciones de reciclaje.",
-                    "Conuco escolar: Liderar y mantener los semilleros y áreas de siembra.",
-                    "Patrulla de ecoeficiencia: Detectar y reportar botes de agua o luces encendidas.",
-                    "Vocería ambiental: Difundir efemérides ambientales con sentido educativo."
-                ]
-            }
-        ]
-    },
-    {
-        "titulo": "Brigada de Gestión de Riesgos (Seguridad Integral)",
-        "tab_name": "Gestión de Riesgos",
-        "icon": ft.Icons.HEALTH_AND_SAFETY_OUTLINED,
-        "color_base": "#dc2626",
-        "color_dark": "#b91c1c",
-        "proposito": "Capacitar a la comunidad escolar para actuar de manera resiliente antes, durante y después de una emergencia (sismos, incendios o lluvias).",
-        "identificacion": "Chaleco o distintivo de seguridad escolar.",
-        "fundamento_legal": "Protocolos institucionales de seguridad, prevención y resguardo.",
-        "mision": "Fortalecer la cultura preventiva del plantel y apoyar la preparación institucional para lograr una respuesta ordenada, informada y segura.",
-        "uso_plataforma": "Registrar inventario de seguridad activa (extintores, botiquines), mapas de riesgo digital y reportes de simulacros e incidencias.",
-        "actividad_sugerida": "'Detectives de Riesgos con Mapas Digitales': recorrer e identificar vulnerabilidades e instalaciones deficientes en la estructura de la escuela.",
-        "objetivo_formativo": "Desarrollar firmeza, conciencia preventiva, disciplina en emergencias y la aptitud básica para dirigir protocolos ordenados en colectivo.",
-        "recomendaciones": [
-            "Evitar la improvisación mediante apego estricto y riguroso a roles y rutas.",
-            "Priorizar en todo caso la calma y la claridad vocal en las instrucciones.",
-            "Informar regularmente las fechas de vencimiento o defectos de los inventarios físicos.",
-            "Confeccionar reportes rigurosos y formativos tras culminar cualquier incidente."
-        ],
-        "secciones": [
-            {
-                "titulo": "Fases de acción",
-                "items": [
-                    "Prevención (Antes): Actualización regular del mapa de riesgos y revisión física de salidas.",
-                    "Respuesta (Durante): Liderar con calma la evacuación organizada de las aulas.",
-                    "Recuperación (Después): Chequear el punto de encuentro y verificar personas vulnerables."
-                ]
-            }
-        ]
-    },
-    {
-        "titulo": "Brigada de Patrulla Escolar (Vigilancia Vial)",
-        "tab_name": "Patrulla Escolar",
-        "icon": ft.Icons.DIRECTIONS_WALK_OUTLINED,
-        "color_base": "#ea580c",
-        "color_dark": "#c2410c",
-        "proposito": "Garantizar el ordenamiento vial pacífico para el resguardo físico general educando al transeúnte sobre un comportamiento civil impecable.",
-        "identificacion": "Uniforme regular portando brazalete tricolor, boina azul y símbolo de PARE manual.",
-        "fundamento_legal": "Normativas civiles de corresponsabilidad y orden vial estudiantil.",
-        "mision": "Promover los desplazamientos seguros de los alumnos y representantes estableciendo un cordón perimetral y una cultura de seguridad en calle.",
-        "uso_plataforma": "Roster de turnos digital interactivo para la distribución equitativa de patrullajes y seguimiento y registro de anomalías vehiculares.",
-        "actividad_sugerida": "'El Pasaporte del Transeúnte Responsable': Prácticas interactivas de las normativas de paso y señales frente a la vía real en zonas protegidas.",
-        "objetivo_formativo": "Formar a los patrulleros en el discernimiento del tráfico, las señales manuales reglamentarias y el control del flujo peatonal civil.",
-        "recomendaciones": [
-            "Ubicarse con margen de anticipación en el nivel perimetral correcto y seguro.",
-            "Solo realizar gestos al confirmar mediante observación panorámica previa las áreas.",
-            "Proyectar firmeza civil asertiva y formalidad al ejercer sus labores comunicativas."
-        ],
-        "secciones": [
-            {
-                "titulo": "Protocolo de guardia vial",
-                "items": [
-                    "Ubicación: Permanecer un paso detrás del borde de la acera.",
-                    "Observación: Validar estrictamente velocidad de vehículos antes de dar paso.",
-                    "Acción: Señal de PARE de frente a vehículos y señal de paso a peatones.",
-                    "Normas Clave: No usar pitos ni distractores; saludo marcial y formalidad."
-                ]
-            }
-        ]
-    }
-]
+from components import titulo_pagina, card_principal, resolver_contexto_filtrado
+from contenido_educativo import CONTENIDO_EDUCATIVO
+from brigadas_catalogo import CATALOGO_BRIGADAS_BASE
+from database.crud_brigada import obtener_tipo_brigada_por_id
 
 
+# ─────────────────────────────────────────────────────────────
+# MAPEO DE ICONOS POR SLUG  (fuente: theme.BRIGADAS["icono"])
+# Se resuelve con fallback seguro.
+# ─────────────────────────────────────────────────────────────
+_ICONOS_SLUG = {
+    "ecologica":        "ECO_OUTLINED",
+    "riesgo":           "HEALTH_AND_SAFETY_OUTLINED",
+    "patrulla":         "DIRECTIONS_WALK_OUTLINED",
+    "convivencia":      "HANDSHAKE_OUTLINED",
+    "auxilios":         "MEDICAL_SERVICES_OUTLINED",
+    "educacion_fisica": "SPORTS_BASKETBALL_OUTLINED",
+    "conuco":           "AGRICULTURE_OUTLINED",
+    "patrimonio":       "MUSEUM_OUTLINED",
+    "artes":            "PALETTE_OUTLINED",
+    "patriotica":       "FLAG_OUTLINED",
+    "ddhh":             "GAVEL_OUTLINED",
+}
+
+_FALLBACK_ICON = ft.Icons.MENU_BOOK_OUTLINED
+
+
+def _icono(slug: str):
+    """Resuelve un icono Flet por slug con fallback seguro."""
+    nombre = _ICONOS_SLUG.get(slug)
+    if nombre:
+        return getattr(ft.Icons, nombre, _FALLBACK_ICON)
+    return _FALLBACK_ICON
+
+
+def _color_brigada(slug: str):
+    """Obtiene el color primario hex de una brigada desde theme.BRIGADAS."""
+    info = BRIGADAS.get(slug, {})
+    return info.get("hex_primario", "#64748b")
+
+
+def _color_brigada_oscuro(slug: str):
+    """Obtiene el color primario oscuro hex de una brigada desde theme.BRIGADAS."""
+    info = BRIGADAS.get(slug, {})
+    return info.get("hex_primario_oscuro", "#475569")
+
+
+def _nombre_brigada(slug: str):
+    """Obtiene el nombre oficial de una brigada desde theme.BRIGADAS."""
+    info = BRIGADAS.get(slug, {})
+    return info.get("nombre", slug.replace("_", " ").title())
+
+
+# ─────────────────────────────────────────────────────────────
+# BUILD PRINCIPAL
+# ─────────────────────────────────────────────────────────────
 def build(page: ft.Page, **kwargs) -> ft.Control:
-    MAPA_GUIAS = {
-        "ecologica": "Ecológica",
-        "convivencia": "Convivencia y Paz",
-        "riesgo": "Gestión de Riesgos",
-        "patrulla": "Patrulla Escolar",
-    }
-    _tb = (page.data or {}).get("brigada_activa")
-    tab_name_objetivo = MAPA_GUIAS.get(_tb)
+    ctx = resolver_contexto_filtrado(page)
+    modo = ctx.get("modo")
 
-    guia_activa = next(
-        (g for g in GUIAS_BRIGADAS if g["tab_name"] == tab_name_objetivo),
-        None
-    )
+    # Contenedor dinámico que permite swap entre grid y guía
+    contenedor_dinamico = ft.Container(expand=True)
 
-    if guia_activa:
-        contenido_guia = ft.Container(
-            content=ft.Column(
-                [
-                    _build_guia_card(page, guia_activa),
-                ],
-                scroll=None,
-            ),
-            padding=ft.Padding(0, 16, 0, 0),
-        )
+    if modo == "institucional":
+        # Directivo/Admin: vista con 11 tarjetas
+        contenedor_dinamico.content = _build_grid_tarjetas(page, contenedor_dinamico)
+
+    elif modo == "brigada":
+        # Profesor con brigada: guía directa
+        usuario = (page.data or {}).get("usuario_actual", {})
+        tipo = obtener_tipo_brigada_por_id(usuario.get("Brigada_idBrigada"))
+        if tipo and tipo in CONTENIDO_EDUCATIVO:
+            contenedor_dinamico.content = _build_vista_guia(page, tipo, mostrar_volver=False)
+        else:
+            contenedor_dinamico.content = _build_empty_contenido(tipo)
+
+    elif modo == "sin_brigada":
+        contenedor_dinamico.content = _build_empty_state_sin_brigada()
+
     else:
-        contenido_guia = ft.Container(
-            content=card_principal(
-                ft.Column(
-                    [
-                        ft.Icon(ft.Icons.INFO_OUTLINE, color=COLOR_PRIMARIO, size=48),
-                        ft.Container(height=16),
-                        ft.Text("Selecciona una Brigada Escolar activa para ver su guía académica extendida.", color=COLOR_TEXTO_SEC, size=16),
-                    ],
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER
-                )
-            ),
-            padding=16,
-            alignment=ft.Alignment(0, 0)
-        )
+        # sin_acceso u otro caso
+        contenedor_dinamico.content = _build_empty_state_sin_acceso(ctx.get("error"))
 
     contenido = ft.Column(
         [
             titulo_pagina(
-                "Módulo Educativo y Protocolos",
-                "Consulta los fundamentos y directrices operativas de tu Brigada",
+                "Contenido Educativo",
+                "Guías operativas y pedagógicas de las brigadas escolares",
             ),
-            ft.Container(height=32),
-            _build_hero_card(),
-            ft.Container(height=16),
-            contenido_guia,
+            ft.Container(height=24),
+            contenedor_dinamico,
         ],
         scroll=ft.ScrollMode.AUTO,
         expand=True,
@@ -202,132 +117,393 @@ def build(page: ft.Page, **kwargs) -> ft.Control:
     )
 
 
-def _build_hero_card():
-    return card_principal(
-        ft.Row(
+# ─────────────────────────────────────────────────────────────
+# VISTA INSTITUCIONAL: 11 TARJETAS (DIRECTIVO)
+# ─────────────────────────────────────────────────────────────
+def _build_grid_tarjetas(page: ft.Page, contenedor_dinamico: ft.Container):
+    """Construye la grilla de 11 tarjetas en orden de CATALOGO_BRIGADAS_BASE."""
+
+    def _on_click_tarjeta(slug):
+        def handler(e):
+            contenedor_dinamico.content = _build_vista_guia(
+                page, slug, mostrar_volver=True,
+                on_volver=lambda: _volver_a_tarjetas(page, contenedor_dinamico),
+            )
+            page.update()
+        return handler
+
+    tarjetas = []
+    for entrada in CATALOGO_BRIGADAS_BASE:
+        slug = entrada["slug"]
+        if slug not in CONTENIDO_EDUCATIVO:
+            continue
+        guia = CONTENIDO_EDUCATIVO[slug]
+        color = _color_brigada(slug)
+        color_osc = _color_brigada_oscuro(slug)
+        nombre = _nombre_brigada(slug)
+        icono = _icono(slug)
+
+        resumen = guia.get("proposito", "")
+        if len(resumen) > 130:
+            resumen = resumen[:127] + "…"
+
+        tarjeta = ft.Container(
+            content=ft.Column(
+                [
+                    # Header con gradiente
+                    ft.Container(
+                        content=ft.Column(
+                            [
+                                ft.Container(
+                                    content=ft.Icon(icono, color="white", size=32),
+                                    width=56,
+                                    height=56,
+                                    border_radius=14,
+                                    bgcolor=ft.Colors.with_opacity(0.25, "white"),
+                                    alignment=ft.Alignment.CENTER,
+                                ),
+                                ft.Container(height=10),
+                                ft.Text(nombre, size=15, weight="bold", color="white",
+                                        max_lines=2, overflow=ft.TextOverflow.ELLIPSIS),
+                            ],
+                            spacing=0,
+                            horizontal_alignment=ft.CrossAxisAlignment.START,
+                        ),
+                        padding=20,
+                        border_radius=ft.BorderRadius.only(top_left=14, top_right=14),
+                        gradient=ft.LinearGradient(
+                            begin=ft.Alignment.TOP_LEFT,
+                            end=ft.Alignment.BOTTOM_RIGHT,
+                            colors=[color, color_osc],
+                        ),
+                    ),
+                    # Body
+                    ft.Container(
+                        content=ft.Column(
+                            [
+                                ft.Text(resumen, size=12, color=COLOR_TEXTO_SEC,
+                                        max_lines=3, overflow=ft.TextOverflow.ELLIPSIS),
+                                ft.Container(height=12),
+                                ft.Container(
+                                    content=ft.Row(
+                                        [
+                                            ft.Text("Ver guía", size=13, weight="w600", color=color),
+                                            ft.Icon(ft.Icons.ARROW_FORWARD, color=color, size=16),
+                                        ],
+                                        spacing=4,
+                                        alignment=ft.MainAxisAlignment.CENTER,
+                                    ),
+                                    padding=ft.Padding(12, 8, 12, 8),
+                                    border_radius=8,
+                                    border=ft.Border.all(1.5, color),
+                                    on_click=_on_click_tarjeta(slug),
+                                ),
+                            ],
+                            spacing=0,
+                            horizontal_alignment=ft.CrossAxisAlignment.START,
+                        ),
+                        padding=16,
+                        bgcolor=COLOR_CARD,
+                        border_radius=ft.BorderRadius.only(bottom_left=14, bottom_right=14),
+                        border=ft.Border(
+                            left=ft.BorderSide(1, COLOR_BORDE),
+                            bottom=ft.BorderSide(1, COLOR_BORDE),
+                            right=ft.BorderSide(1, COLOR_BORDE),
+                        ),
+                    ),
+                ],
+                spacing=0,
+            ),
+            border_radius=14,
+            shadow=get_sombra_suave(),
+            on_click=_on_click_tarjeta(slug),
+            width=300,
+        )
+        tarjetas.append(tarjeta)
+
+    return ft.Column(
+        [
+            ft.Container(
+                content=ft.Row(
+                    [
+                        ft.Icon(ft.Icons.SCHOOL_OUTLINED, color=COLOR_PRIMARIO, size=28),
+                        ft.Container(width=12),
+                        ft.Column(
+                            [
+                                ft.Text("Contenido Educativo Institucional", size=18, weight="bold", color=COLOR_TEXTO),
+                                ft.Text("Seleccione una brigada para consultar su guía completa.", size=14, color=COLOR_TEXTO_SEC),
+                            ],
+                            spacing=4,
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.START,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                padding=ft.Padding(0, 0, 0, 16),
+            ),
+            ft.Row(
+                tarjetas,
+                wrap=True,
+                spacing=16,
+                run_spacing=16,
+                alignment=ft.MainAxisAlignment.START,
+            ),
+        ],
+        spacing=0,
+    )
+
+
+def _volver_a_tarjetas(page: ft.Page, contenedor_dinamico: ft.Container):
+    """Restaura la grilla de tarjetas sin modificar brigada_activa."""
+    contenedor_dinamico.content = _build_grid_tarjetas(page, contenedor_dinamico)
+    page.update()
+
+
+# ─────────────────────────────────────────────────────────────
+# VISTA DE GUÍA COMPLETA
+# ─────────────────────────────────────────────────────────────
+def _build_vista_guia(page: ft.Page, slug: str, mostrar_volver=False, on_volver=None):
+    """Construye la vista completa de una guía educativa."""
+    guia = CONTENIDO_EDUCATIVO.get(slug, {})
+    color = _color_brigada(slug)
+    color_osc = _color_brigada_oscuro(slug)
+    nombre = _nombre_brigada(slug)
+    icono = _icono(slug)
+
+    secciones = []
+
+    # Botón volver (solo para directivo)
+    if mostrar_volver and on_volver:
+        secciones.append(
+            ft.Container(
+                content=ft.Row(
+                    [
+                        ft.Icon(ft.Icons.ARROW_BACK, color=COLOR_PRIMARIO, size=18),
+                        ft.Text("Volver a contenidos", size=14, weight="w500", color=COLOR_PRIMARIO),
+                    ],
+                    spacing=8,
+                    alignment=ft.MainAxisAlignment.START,
+                ),
+                on_click=lambda e: on_volver(),
+                padding=ft.Padding(0, 0, 0, 16),
+            )
+        )
+
+    # Header con gradiente
+    header = ft.Container(
+        content=ft.Row(
             [
-                ft.Icon(ft.Icons.MENU_BOOK_OUTLINED, color=COLOR_PRIMARIO, size=48),
-                ft.Container(width=24),
+                ft.Container(
+                    content=ft.Icon(icono, color="white", size=48),
+                    width=72,
+                    height=72,
+                    border_radius=16,
+                    bgcolor=ft.Colors.with_opacity(0.2, "white"),
+                    alignment=ft.Alignment.CENTER,
+                ),
+                ft.Container(width=20),
                 ft.Column(
                     [
-                        ft.Text("Guía Académica y Operativa Oficial", size=18, weight="bold", color=COLOR_TEXTO),
-                        ft.Text("Manual en línea permanente sobre las directrices y pedagogía institucional.", size=14, color=COLOR_TEXTO_SEC),
+                        ft.Text(nombre, size=22, weight="bold", color="white"),
+                        ft.Text("Guía Operativa y Pedagógica", size=14,
+                                color=ft.Colors.with_opacity(0.9, "white")),
                     ],
                     spacing=4,
-                    horizontal_alignment=ft.CrossAxisAlignment.START,
+                    expand=True,
                 ),
             ],
             alignment=ft.MainAxisAlignment.START,
         ),
+        padding=24,
+        border_radius=ft.BorderRadius.only(top_left=16, top_right=16),
+        gradient=ft.LinearGradient(
+            begin=ft.Alignment.TOP_LEFT,
+            end=ft.Alignment.BOTTOM_RIGHT,
+            colors=[color, color_osc],
+        ),
+    )
+
+    # Secciones de contenido
+    body_items = []
+
+    _agregar_seccion(body_items, ft.Icons.STARS_OUTLINED, "Propósito", guia.get("proposito"), color)
+    _agregar_seccion(body_items, ft.Icons.BADGE_OUTLINED, "Identificación Visual", guia.get("identificacion"), color)
+    _agregar_seccion(body_items, ft.Icons.FLAG_OUTLINED, "Misión de la Brigada", guia.get("mision"), color)
+    _agregar_seccion(body_items, ft.Icons.GAVEL_OUTLINED, "Marco Orientador", guia.get("fundamento"), color)
+    _agregar_seccion(body_items, ft.Icons.PERSON_OUTLINED, "Perfil del Brigadista", guia.get("perfil_brigadista"), color, es_lista=True)
+    _agregar_seccion(body_items, ft.Icons.ASSIGNMENT_OUTLINED, "Funciones Principales", guia.get("funciones"), color, es_lista=True)
+    _agregar_seccion(body_items, ft.Icons.FORMAT_LIST_NUMBERED, "Protocolo de Actuación", guia.get("protocolo"), color, es_lista=True)
+
+    # Actividades pedagógicas (lista de dicts)
+    actividades = guia.get("actividades_pedagogicas", [])
+    if actividades:
+        body_items.append(
+            ft.Row(
+                [ft.Icon(ft.Icons.LIGHTBULB_OUTLINED, color=color, size=20),
+                 ft.Text("Actividades Pedagógicas Sugeridas", size=15, weight="w700", color=COLOR_TEXTO)],
+                spacing=8,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            )
+        )
+        body_items.append(ft.Container(height=6))
+        for act in actividades:
+            body_items.append(
+                ft.Container(
+                    content=ft.Column(
+                        [
+                            ft.Text(act.get("nombre", ""), size=14, weight="w600", color=COLOR_TEXTO),
+                            ft.Text(act.get("descripcion", ""), size=13, color=COLOR_TEXTO_SEC),
+                        ],
+                        spacing=2,
+                    ),
+                    padding=ft.Padding(12, 10, 12, 10),
+                    border_radius=8,
+                    bgcolor=ft.Colors.with_opacity(0.04, color),
+                    border=ft.Border.all(1, ft.Colors.with_opacity(0.15, color)),
+                    margin=ft.margin.only(bottom=6),
+                )
+            )
+        body_items.append(ft.Container(height=24))
+
+    _agregar_seccion(body_items, ft.Icons.PHONE_IPHONE_OUTLINED, "Uso dentro de la Plataforma SBE", guia.get("uso_sbe"), color, es_lista=True)
+    _agregar_seccion(body_items, ft.Icons.INSIGHTS_OUTLINED, "Indicadores y Evidencias", guia.get("indicadores"), color, es_lista=True)
+    _agregar_seccion(body_items, ft.Icons.BLOCK_OUTLINED, "Límites de Actuación", guia.get("limites_actuacion"), color, es_lista=True)
+    _agregar_seccion(body_items, ft.Icons.CHECKLIST_OUTLINED, "Lista de Chequeo Rápida", guia.get("checklist"), color, es_lista=True)
+
+    body = ft.Container(
+        content=ft.Column(body_items, spacing=0),
+        padding=32,
+        bgcolor=COLOR_CARD,
+        border_radius=ft.BorderRadius.only(bottom_left=16, bottom_right=16),
+        border=ft.Border(
+            left=ft.BorderSide(1, COLOR_BORDE),
+            bottom=ft.BorderSide(1, COLOR_BORDE),
+            right=ft.BorderSide(1, COLOR_BORDE),
+        ),
+    )
+
+    guia_card = ft.Container(
+        content=ft.Column([header, body], spacing=0),
+        border_radius=16,
+        shadow=get_sombra_card(),
+    )
+
+    secciones.append(guia_card)
+    secciones.append(ft.Container(height=32))
+
+    return ft.Column(secciones, spacing=0)
+
+
+def _agregar_seccion(items: list, icono, titulo: str, contenido, color: str, es_lista=False):
+    """Agrega una sección con icono, título y contenido (texto o lista)."""
+    if not contenido:
+        return
+
+    items.append(
+        ft.Row(
+            [ft.Icon(icono, color=color, size=20),
+             ft.Text(titulo, size=15, weight="w700", color=COLOR_TEXTO)],
+            spacing=8,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        )
+    )
+    items.append(ft.Container(height=6))
+
+    if es_lista and isinstance(contenido, list):
+        for item in contenido:
+            items.append(
+                ft.Row(
+                    [
+                        ft.Container(
+                            width=6, height=6, border_radius=3,
+                            bgcolor=color, margin=ft.margin.only(top=6, right=8),
+                        ),
+                        ft.Text(str(item), size=14, color=COLOR_TEXTO_SEC, expand=True),
+                    ],
+                    alignment=ft.MainAxisAlignment.START,
+                    vertical_alignment=ft.CrossAxisAlignment.START,
+                )
+            )
+            items.append(ft.Container(height=4))
+    else:
+        items.append(ft.Text(str(contenido), size=14, color=COLOR_TEXTO_SEC))
+
+    items.append(ft.Container(height=24))
+
+
+# ─────────────────────────────────────────────────────────────
+# EMPTY STATES
+# ─────────────────────────────────────────────────────────────
+def _build_empty_state_sin_brigada():
+    """Profesor sin brigada asignada."""
+    return ft.Container(
+        content=card_principal(
+            ft.Column(
+                [
+                    ft.Icon(ft.Icons.SCHOOL_OUTLINED, color=COLOR_TEXTO_SEC, size=64),
+                    ft.Container(height=16),
+                    ft.Text("Sin brigada asignada", size=20, weight="bold", color=COLOR_TEXTO),
+                    ft.Container(height=8),
+                    ft.Text(
+                        "No posee una brigada asignada. Solicite a la dirección institucional "
+                        "la asignación correspondiente para acceder al contenido educativo específico.",
+                        size=14, color=COLOR_TEXTO_SEC,
+                        text_align=ft.TextAlign.CENTER,
+                    ),
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=0,
+            ),
+        ),
+        padding=32,
+        alignment=ft.Alignment(0, 0),
     )
 
 
-def _build_guia_card(page: ft.Page, guia: dict):
-    secciones_gui = []
-
-    def _agregar_seccion(icono: str, titulo: str, contenido=None, es_lista=False):
-        # Título de la sección
-        secciones_gui.append(
-            ft.Row(
-                [ft.Icon(icono, color=guia["color_base"], size=20), ft.Text(titulo, size=15, weight="w700", color=COLOR_TEXTO)],
-                spacing=8,
-                vertical_alignment=ft.CrossAxisAlignment.CENTER
-            )
-        )
-        secciones_gui.append(ft.Container(height=6))
-
-        # Contenido
-        if contenido:
-            if es_lista and isinstance(contenido, list):
-                for item in contenido:
-                    secciones_gui.append(
-                        ft.Row(
-                            [
-                                ft.Container(width=6, height=6, border_radius=3, bgcolor=guia["color_base"], margin=ft.margin.only(top=6, right=8)),
-                                ft.Text(item, size=14, color=COLOR_TEXTO_SEC, expand=True)
-                            ],
-                            alignment=ft.MainAxisAlignment.START,
-                            vertical_alignment=ft.CrossAxisAlignment.START
-                        )
-                    )
-                    secciones_gui.append(ft.Container(height=4))
-            else:
-                secciones_gui.append(ft.Text(str(contenido), size=14, color=COLOR_TEXTO_SEC))
-        
-        secciones_gui.append(ft.Container(height=24))
-
-    # Construir UI dinámica según orden institucional
-    _agregar_seccion(ft.Icons.STARS_OUTLINED, "Propósito Principal", guia.get("proposito"))
-    _agregar_seccion(ft.Icons.BADGE_OUTLINED, "Identificación Visual", guia.get("identificacion"))
-    
-    if guia.get("fundamento_legal"):
-        _agregar_seccion(ft.Icons.GAVEL_OUTLINED, "Marco Orientador Legal", guia.get("fundamento_legal"))
-        
-    _agregar_seccion(ft.Icons.FLAG_OUTLINED, "Misión de la Brigada", guia.get("mision"))
-    
-    if "secciones" in guia:
-        for sec in guia["secciones"]:
-            _agregar_seccion(ft.Icons.FORMAT_LIST_NUMBERED, sec.get("titulo", "Protocolos"), sec.get("items"), es_lista=True)
-
-    _agregar_seccion(ft.Icons.PHONE_IPHONE_OUTLINED, "Uso de la Plataforma Digital SBE", guia.get("uso_plataforma"))
-    _agregar_seccion(ft.Icons.LIGHTBULB_OUTLINED, "Actividad Pedagógica Sugerida", guia.get("actividad_sugerida"))
-    _agregar_seccion(ft.Icons.SCHOOL_OUTLINED, "Objetivo Formativo Institucional", guia.get("objetivo_formativo"))
-    
-    if "recomendaciones" in guia:
-        _agregar_seccion(ft.Icons.VERIFIED_OUTLINED, "Recomendaciones Operativas", guia.get("recomendaciones"), es_lista=True)
-
-    # Eliminar el botón "Ver más detalles" y espaciado final final
-    secciones_gui.append(ft.Container(height=8))
-
+def _build_empty_state_sin_acceso(error_msg=None):
+    """Directivo sin institucion_id o error de contexto."""
     return ft.Container(
-        content=ft.Column(
-            [
-                ft.Container(
-                    content=ft.Row(
-                        [
-                            ft.Container(
-                                content=ft.Icon(guia["icon"], color="white", size=48),
-                                width=72,
-                                height=72,
-                                border_radius=16,
-                                bgcolor=ft.Colors.with_opacity(0.2, "white"),
-                                alignment=ft.Alignment.CENTER,
-                            ),
-                            ft.Container(width=20),
-                            ft.Column(
-                                [
-                                    ft.Text(guia["titulo"], size=22, weight="bold", color="white"),
-                                    ft.Text("Manual Operativo Completo", size=14, color=ft.Colors.with_opacity(0.9, "white")),
-                                ],
-                                spacing=4,
-                                horizontal_alignment=ft.CrossAxisAlignment.START,
-                                expand=True,
-                            ),
-                        ],
-                        alignment=ft.MainAxisAlignment.START,
+        content=card_principal(
+            ft.Column(
+                [
+                    ft.Icon(ft.Icons.LOCK_OUTLINED, color=COLOR_TEXTO_SEC, size=64),
+                    ft.Container(height=16),
+                    ft.Text("Acceso no disponible", size=20, weight="bold", color=COLOR_TEXTO),
+                    ft.Container(height=8),
+                    ft.Text(
+                        error_msg or "No se pudo determinar el contexto de acceso. "
+                        "Verifique su sesión e intente nuevamente.",
+                        size=14, color=COLOR_TEXTO_SEC,
+                        text_align=ft.TextAlign.CENTER,
                     ),
-                    padding=24,
-                    border_radius=ft.BorderRadius.only(top_left=16, top_right=16),
-                    gradient=ft.LinearGradient(
-                        begin=ft.Alignment.TOP_LEFT,
-                        end=ft.Alignment.BOTTOM_RIGHT,
-                        colors=[guia["color_base"], guia["color_dark"]],
-                    ),
-                ),
-                ft.Container(
-                    content=ft.Column(
-                        secciones_gui,
-                        spacing=0,
-                        horizontal_alignment=ft.CrossAxisAlignment.START,
-                    ),
-                    padding=32,
-                    bgcolor=COLOR_CARD,
-                    border_radius=ft.BorderRadius.only(bottom_left=16, bottom_right=16),
-                    border=ft.Border(left=ft.BorderSide(1, COLOR_BORDE), bottom=ft.BorderSide(1, COLOR_BORDE), right=ft.BorderSide(1, COLOR_BORDE)),
-                ),
-            ],
-            spacing=0,
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=0,
+            ),
         ),
-        border_radius=16,
-        shadow=get_sombra_card(),
+        padding=32,
+        alignment=ft.Alignment(0, 0),
+    )
+
+
+def _build_empty_contenido(tipo_brigada=None):
+    """Profesor con brigada pero sin contenido educativo disponible para ese tipo."""
+    return ft.Container(
+        content=card_principal(
+            ft.Column(
+                [
+                    ft.Icon(ft.Icons.INFO_OUTLINE, color=COLOR_PRIMARIO, size=48),
+                    ft.Container(height=16),
+                    ft.Text(
+                        f"Contenido educativo no disponible para la brigada tipo '{tipo_brigada or 'desconocido'}'.",
+                        size=16, color=COLOR_TEXTO_SEC,
+                        text_align=ft.TextAlign.CENTER,
+                    ),
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=0,
+            ),
+        ),
+        padding=32,
+        alignment=ft.Alignment(0, 0),
     )
