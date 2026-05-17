@@ -18,6 +18,10 @@ Gestiona brigadas escolares de Venezuela según el Ministerio de Educación:
 Base de datos: MySQL (XAMPP local).
 Entorno: Windows, Python 3.x, virtualenv en ./venv
 
+---importante----
+Para importar la bdd usar el script seed_db.py: 
+.\venv\Scripts\python.exe scripts\seed_db.py
+
 Se ejecuta con: py main.py (desde la raíz del proyecto con venv activado)
 
 
