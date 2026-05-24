@@ -1,9 +1,3 @@
-"""
-Sistema de Brigadas Escolares — Multi-Brigada (Municipio Maracaibo).
-Flujo: intro (bloques SBE neutros) → Login (neutro) → Selección de Brigada (2×2)
-       → Transición (color de brigada) → App (sidebar + contenido).
-Soporta 4 tipos: Gestión de Riesgo, Patrulla Escolar, Convivencia y Paz, Ecológica.
-"""
 
 import asyncio
 import json
