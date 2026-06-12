@@ -64,7 +64,6 @@ def _etiqueta(texto: str) -> ft.Control:
 
 def _campo_texto(label: str, hint: str = "", password: bool = False, multiline: bool = False, value: str = "") -> ft.TextField:
     return ft.TextField(
-        label=label,
         hint_text=hint,
         value=value or None,
         password=password,
@@ -76,15 +75,14 @@ def _campo_texto(label: str, hint: str = "", password: bool = False, multiline: 
         text_size=14,
         color=COLOR_TEXTO,
         cursor_color=COLOR_PRIMARIO,
-        content_padding=ft.Padding(12, 14),
+        content_padding=ft.Padding(14, 14),
         border_radius=RADIO,
-        dense=True,
+        hint_style=ft.TextStyle(size=14, color=ft.Colors.GREY_700),
     )
 
 
 def _campo_numero(label: str, hint: str = "", value: str = "") -> ft.TextField:
     return ft.TextField(
-        label=label,
         hint_text=hint,
         value=value or None,
         keyboard_type=ft.KeyboardType.NUMBER,
@@ -93,24 +91,24 @@ def _campo_numero(label: str, hint: str = "", value: str = "") -> ft.TextField:
         text_size=14,
         color=COLOR_TEXTO,
         cursor_color=COLOR_PRIMARIO,
-        content_padding=ft.Padding(12, 14),
+        content_padding=ft.Padding(14, 14),
         border_radius=RADIO,
-        dense=True,
+        hint_style=ft.TextStyle(size=14, color=ft.Colors.GREY_700),
     )
 
 
 def _selector(label: str, opciones: list, value: str = "") -> ft.Dropdown:
     return ft.Dropdown(
-        label=label,
+        hint_text=label,
         options=[ft.dropdown.Option(str(o)) for o in opciones],
         value=value or (opciones[0] if opciones else None),
         border_color=COLOR_BORDE,
         focused_border_color=COLOR_PRIMARIO,
         text_size=14,
         color=COLOR_TEXTO,
-        content_padding=ft.Padding(12, 14),
+        content_padding=ft.Padding(14, 14),
         border_radius=RADIO,
-        dense=True,
+        hint_style=ft.TextStyle(size=14, color=ft.Colors.GREY_700),
     )
 
 
@@ -2178,9 +2176,9 @@ def abrir_form_profesor_registrar(page: ft.Page, on_success=None):
         focused_border_color=COLOR_PRIMARIO,
         text_size=14,
         color=COLOR_TEXTO,
-        content_padding=ft.Padding(12, 14),
+        content_padding=ft.Padding(14, 14),
         border_radius=RADIO,
-        dense=True,
+        hint_style=ft.TextStyle(size=14, color=ft.Colors.GREY_700),
     )
 
     def on_crear(_):
