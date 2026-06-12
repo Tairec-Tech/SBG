@@ -5,6 +5,7 @@ import os
 import random
 import sys
 import flet as ft
+from dotenv import load_dotenv 
 
 from util_log import log
 
@@ -13,6 +14,17 @@ if sys.stdout:
     sys.stdout.flush()
 if sys.stderr:
     sys.stderr.flush()
+
+   
+if getattr(sys, 'frozen', False):
+    EXE_DIR = os.path.dirname(sys.executable)
+else:
+    EXE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+env_path = os.path.join(EXE_DIR, ".env")
+load_dotenv(dotenv_path=env_path)
+
+LOGOS_DIR = os.path.join(EXE_DIR, "uploads", "logos")
 
 from theme import (
     TEMA_CLARO,
@@ -31,13 +43,6 @@ from screens import screen_dashboard, screen_brigade_select, screen_brigades
 from components import build_sidebar
 
 TRANSITION_TEXT = "#FFFFFF"
-if getattr(sys, 'frozen', False):
-    # Si la app está empaquetada como .exe, buscar junto al ejecutable
-    EXE_DIR = os.path.dirname(sys.executable)
-else:
-    EXE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-LOGOS_DIR = os.path.join(EXE_DIR, "uploads", "logos")
 
 ABREV_ROL = {"Directivo": "Dir.", "Coordinador": "Coord.", "Profesor": "Prof."}
 

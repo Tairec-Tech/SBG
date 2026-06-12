@@ -4,8 +4,11 @@ from screens import (
     screen_dashboard,
     screen_brigades,
     screen_brigadistas,
+    screen_activities,
     screen_shifts,
     screen_reports,
+    screen_reports_impact,
+    screen_reports_activities,
     screen_statistics,
     screen_content,
     screen_login,
@@ -23,8 +26,11 @@ __all__ = [
     "screen_dashboard",
     "screen_brigades",
     "screen_brigadistas",
+    "screen_activities",
     "screen_shifts",
     "screen_reports",
+    "screen_reports_impact",
+    "screen_reports_activities",
     "screen_statistics",
     "screen_content",
     "screen_login",
@@ -37,3 +43,4 @@ __all__ = [
     "screen_utilidades",
     "screen_brigade_select",
 ]
+
