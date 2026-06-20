@@ -262,3 +262,24 @@ def get_actividades_por_nivel(tipo_brigada=None, brigada_rol_id=None, institucio
     if not descripciones:
         return []
     return _agrupar_por_campo_json(descripciones, "nivel_educativo", "Sin nivel")
+
+def get_leaderboard_brigadas(institucion_id: int):
+    """
+    Retorna la lista ordenada de brigadas de una institución específica,
+    ordenadas por la cantidad de actividades en estado 'Completada'.
+    """
+    sql = """
+        SELECT b.idBrigada, b.nombre_brigada, b.tipo_brigada, COUNT(a.idActividad) as total_completadas
+        FROM brigada b
+        LEFT JOIN actividad a ON b.idBrigada = a.Brigada_idBrigada AND a.estado = 'Completada'
+        WHERE b.Institucion_Educativa_idInstitucion = %s
+        GROUP BY b.idBrigada
+        ORDER BY total_completadas DESC
+    """
+    try:
+        rows, _ = ejecutar(sql, (institucion_id,))
+        return [{"id": r[0], "nombre": r[1], "tipo": r[2], "completadas": r[3]} for r in rows]
+    except Exception as e:
+        print(f"Error obteniendo leaderboard de brigadas: {e}")
+        return []
+

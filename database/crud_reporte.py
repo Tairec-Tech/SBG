@@ -327,3 +327,40 @@ def crear_reporte_impacto(
     except Exception as e:
         print(f"Error creando reporte impacto: {e}")
         return None
+
+# ==========================================================
+# GESTIÓN MULTIMEDIA
+# ==========================================================
+
+def guardar_media_reporte(entidad_tipo: str, entidad_id: int, ruta_archivo: str, tipo_archivo: str) -> bool:
+    """
+    Guarda el registro de un archivo multimedia (imagen o video) asociado a un reporte.
+    """
+    sql = """
+    INSERT INTO reporte_media (entidad_tipo, entidad_id, ruta_archivo, tipo_archivo)
+    VALUES (%s, %s, %s, %s)
+    """
+    try:
+        ejecutar(sql, (entidad_tipo, entidad_id, ruta_archivo, tipo_archivo), commit=True)
+        return True
+    except Exception as e:
+        print(f"Error guardando media para {entidad_tipo} {entidad_id}: {e}")
+        return False
+
+def obtener_media_reporte(entidad_tipo: str, entidad_id: int) -> list:
+    """
+    Retorna los archivos multimedia asociados a un reporte específico.
+    """
+    sql = """
+    SELECT idMedia, ruta_archivo, tipo_archivo, fecha_subida
+    FROM reporte_media
+    WHERE entidad_tipo = %s AND entidad_id = %s
+    ORDER BY fecha_subida ASC
+    """
+    try:
+        rows, _ = ejecutar(sql, (entidad_tipo, entidad_id))
+        return [{"id": r[0], "ruta": r[1], "tipo": r[2], "fecha": r[3]} for r in rows]
+    except Exception as e:
+        print(f"Error obteniendo media para {entidad_tipo} {entidad_id}: {e}")
+        return []
+

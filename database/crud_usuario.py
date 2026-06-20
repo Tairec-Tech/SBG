@@ -462,7 +462,7 @@ def listar_brigadistas_visibles_only():
                        b.nombre_brigada
                 FROM usuario u
                 LEFT JOIN brigada b ON b.idBrigada = u.Brigada_idBrigada
-                WHERE u.rol IN ('Profesor', 'Brigadista Jefe', 'Subjefe', 'Brigadista')
+                WHERE u.rol IN ('Profesor', 'Brigadista Jefe', 'Subjefe', 'Brigadista', 'Estudiante')
                 ORDER BY u.rol = 'Profesor' DESC, u.nombre, u.apellido
                 """
             )
@@ -473,7 +473,7 @@ def listar_brigadistas_visibles_only():
                        b.nombre_brigada
                 FROM usuario u
                 LEFT JOIN brigada b ON b.idBrigada = u.Brigada_idBrigada
-                WHERE u.rol IN ('Profesor', 'Brigadista Jefe', 'Subjefe', 'Brigadista')
+                WHERE u.rol IN ('Profesor', 'Brigadista Jefe', 'Subjefe', 'Brigadista', 'Estudiante')
                 ORDER BY u.rol = 'Profesor' DESC, u.nombre, u.apellido
                 """
             )
@@ -723,19 +723,19 @@ def listar_profesores_institucion(institucion_id: int, solo_sin_brigada: bool = 
         conn.close()
 
 
-def crear_profesor_institucional(
+def crear_usuario_institucional(
     nombre: str, apellido: str, email: str, contrasena_plana: str,
-    usuario_str: str, cedula: str, institucion_id: int, brigada_id: int = None,
+    usuario_str: str, cedula: str, institucion_id: int, brigada_id: int = None, rol: str = "Profesor"
 ) -> int:
     """
-    Crea un profesor vinculado a una institución. Solo invocable por un directivo.
+    Crea un usuario (Profesor o Estudiante) vinculado a una institución.
     institucion_id es obligatorio (ValueError si None).
-    Si brigada_id se pasa, asigna profesor a brigada en transacción (ambos lados).
+    Si brigada_id se pasa, asigna el usuario a la brigada. Si es Profesor, actualiza brigada.profesor_id en transacción.
     Valida que brigada pertenezca a la misma institución.
     Retorna idUsuario.
     """
     if not institucion_id:
-        raise ValueError("institucion_id es obligatorio para crear un profesor.")
+        raise ValueError("institucion_id es obligatorio para crear un usuario institucional.")
 
     conn = get_connection()
     try:
@@ -752,8 +752,8 @@ def crear_profesor_institucional(
             if not brigada:
                 raise ValueError("La brigada especificada no existe.")
             if brigada.get("Institucion_Educativa_idInstitucion") != institucion_id:
-                raise ValueError("La brigada no pertenece a la institución del profesor.")
-            if brigada.get("profesor_id"):
+                raise ValueError("La brigada no pertenece a la institución del usuario.")
+            if rol == "Profesor" and brigada.get("profesor_id"):
                 raise ValueError("Esta brigada ya tiene un profesor responsable.")
 
         # Crear usuario profesor
@@ -764,12 +764,12 @@ def crear_profesor_institucional(
             INSERT INTO usuario (nombre, apellido, cedula, email, usuario, contrasena, rol, Brigada_idBrigada, Institucion_Educativa_idInstitucion)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
-            (nombre, apellido, cedula_val, email.strip().lower(), usuario_val, hash_password(contrasena_plana), "Profesor", brigada_id, institucion_id),
+            (nombre, apellido, cedula_val, email.strip().lower(), usuario_val, hash_password(contrasena_plana), rol, brigada_id, institucion_id),
         )
         id_usuario = cursor.lastrowid
 
-        # Si se asigna brigada, actualizar brigada.profesor_id
-        if brigada_id:
+        # Si se asigna brigada y es Profesor, actualizar brigada.profesor_id
+        if brigada_id and rol == "Profesor":
             cursor.execute("UPDATE brigada SET profesor_id = %s WHERE idBrigada = %s", (id_usuario, brigada_id))
 
         conn.commit()
@@ -800,6 +800,29 @@ def listar_brigadas_profesor(profesor_id: int):
             ORDER BY b.fecha_creacion DESC
             """,
             (profesor_id,),
+        )
+        return cursor.fetchall()
+    finally:
+        conn.close()
+
+
+def listar_estudiantes_por_brigada(brigada_id: int):
+    """
+    Lista usuarios que son alumnos asignados a una brigada en específico.
+    Retorna lista de dict: idUsuario, nombre, apellido, email, rol.
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT u.idUsuario, u.nombre, u.apellido, u.email, u.rol
+            FROM usuario u
+            WHERE u.Brigada_idBrigada = %s
+              AND u.rol IN ('Brigadista Jefe', 'Subjefe', 'Brigadista', 'Estudiante')
+            ORDER BY u.nombre, u.apellido
+            """,
+            (brigada_id,),
         )
         return cursor.fetchall()
     finally:
@@ -878,12 +901,13 @@ def listar_brigadistas_brigada(brigada_id: int):
             SELECT u.idUsuario, u.nombre, u.apellido, u.email, u.rol
             FROM usuario u
             WHERE u.Brigada_idBrigada = %s
-              AND u.rol IN ('Brigadista Jefe', 'Subjefe', 'Brigadista')
+              AND u.rol IN ('Brigadista Jefe', 'Subjefe', 'Brigadista', 'Estudiante')
             ORDER BY
                 CASE u.rol
                     WHEN 'Brigadista Jefe' THEN 1
                     WHEN 'Subjefe' THEN 2
                     WHEN 'Brigadista' THEN 3
+                    WHEN 'Estudiante' THEN 4
                 END,
                 u.nombre, u.apellido
             """,
@@ -907,11 +931,12 @@ def listar_brigadistas_visibles(brigada_id: int):
             SELECT u.idUsuario, u.nombre, u.apellido, u.email, u.rol
             FROM usuario u
             WHERE u.Brigada_idBrigada = %s
-              AND u.rol IN ('Brigadista Jefe', 'Brigadista')
+              AND u.rol IN ('Brigadista Jefe', 'Brigadista', 'Estudiante')
             ORDER BY
                 CASE u.rol
                     WHEN 'Brigadista Jefe' THEN 1
                     WHEN 'Brigadista' THEN 2
+                    WHEN 'Estudiante' THEN 3
                 END,
                 u.nombre, u.apellido
             """,

@@ -30,7 +30,7 @@ def _filtrar_brigadistas(lista, nombre=None, apellido=None, cedula=None, rol=Non
         if rol.lower() == "profesor":
             out = [u for u in out if u.get("rol") == "Profesor"]
         elif rol.lower() in ("estudiante", "alumno"):
-            out = [u for u in out if u.get("rol") in ("Brigadista Jefe", "Subjefe", "Brigadista")]
+            out = [u for u in out if u.get("rol") in ("Brigadista Jefe", "Subjefe", "Brigadista", "Estudiante")]
         else:
             out = [u for u in out if (u.get("rol") or "").lower() == rol.lower()]
     if brigada_id and (brigada_id := str(brigada_id).strip()):
@@ -62,9 +62,9 @@ def build(page: ft.Page, content_area=None, **kwargs) -> ft.Control:
         from forms import abrir_form_brigadista_registrar
         abrir_form_brigadista_registrar(page, on_success=refresh)
 
-    def on_agregar_profesor(_):
-        from forms import abrir_form_profesor_registrar
-        abrir_form_profesor_registrar(page, on_success=refresh)
+    def on_agregar_personal(_):
+        from forms import abrir_form_personal_registrar
+        abrir_form_personal_registrar(page, on_success=refresh)
 
     def refresh():
         if content_area is not None:
@@ -76,7 +76,7 @@ def build(page: ft.Page, content_area=None, **kwargs) -> ft.Control:
     if puede_agregar and not sin_contexto_operativo:
         botones_accion.append(boton_primario("Agregar Brigadista", ft.Icons.PERSON_ADD, on_click=on_agregar))
     if puede_agregar_profesor and not sin_contexto_operativo:
-        botones_accion.append(boton_primario("Agregar Profesor", ft.Icons.SCHOOL, on_click=on_agregar_profesor))
+        botones_accion.append(boton_primario("Registrar Personal/Estudiante", ft.Icons.SCHOOL, on_click=on_agregar_personal))
     accion_barra = ft.Row(
         [c for c in botones_accion if c is not None],
         spacing=12,
@@ -243,7 +243,7 @@ def _build_filtros_y_lista(page, refresh_callback=None):
 
     # Lista inicial: dos secciones
     profesores = [u for u in lista if u.get("rol") == "Profesor"]
-    alumnos = [u for u in lista if u.get("rol") in ("Brigadista Jefe", "Subjefe", "Brigadista")]
+    alumnos = [u for u in lista if u.get("rol") in ("Brigadista Jefe", "Subjefe", "Brigadista", "Estudiante")]
     contenedor_lista.content = _build_lista_interna(
         page, lista, False, refresh_callback, profesores=profesores, alumnos=alumnos
     )
@@ -325,7 +325,7 @@ def _build_filtros_y_lista(page, refresh_callback=None):
 def _build_lista_interna(page, lista_completa, filtro_activo, refresh_callback, profesores=None, alumnos=None):
     if filtro_activo or profesores is None:
         profesores = [u for u in lista_completa if u.get("rol") == "Profesor"]
-        alumnos = [u for u in lista_completa if u.get("rol") in ("Brigadista Jefe", "Subjefe", "Brigadista")]
+        alumnos = [u for u in lista_completa if u.get("rol") in ("Brigadista Jefe", "Subjefe", "Brigadista", "Estudiante")]
     if not profesores and not alumnos:
         return card_principal(
             ft.Column(

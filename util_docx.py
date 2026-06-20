@@ -15,6 +15,55 @@ def _get_downloads_folder():
     """Retorna la ruta de la carpeta Descargas del usuario en Windows."""
     return os.path.join(os.path.expanduser('~'), 'Downloads')
 
+def _add_official_header(doc, title_sub):
+    """Añade un encabezado oficial con el logo a la izquierda y texto a la derecha."""
+    from database.crud_usuario import listar_instituciones
+    inst = None
+    try:
+        insts = listar_instituciones()
+        if insts: inst = insts[0]
+    except Exception:
+        pass
+    
+    nombre_inst = inst.get("nombre_institucion", "Institución Educativa") if inst else "Institución Educativa"
+    logo_ruta = inst.get("logo_ruta") if inst else None
+
+    table = doc.add_table(rows=1, cols=2)
+    table.autofit = False
+    table.columns[0].width = Inches(1.5)
+    table.columns[1].width = Inches(5.0)
+    
+    cell_logo = table.cell(0, 0)
+    cell_text = table.cell(0, 1)
+    
+    if logo_ruta and os.path.exists(logo_ruta):
+        p_logo = cell_logo.paragraphs[0]
+        p_logo.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        run_logo = p_logo.add_run()
+        try:
+            run_logo.add_picture(logo_ruta, width=Inches(1.2))
+        except Exception:
+            pass
+            
+    p_text = cell_text.paragraphs[0]
+    p_text.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    
+    run_inst = p_text.add_run(f"República Bolivariana de Venezuela\nMinisterio del Poder Popular para la Educación\n{nombre_inst}\n")
+    run_inst.bold = True
+    run_inst.font.size = Pt(11)
+    
+    run_sys = p_text.add_run("SISTEMA DE BRIGADAS ESCOLARES (SBE)\n")
+    run_sys.bold = True
+    run_sys.font.size = Pt(12)
+    run_sys.font.color.rgb = RGBColor(0x05, 0x96, 0x69)
+    
+    run_sub = p_text.add_run(title_sub)
+    run_sub.bold = True
+    run_sub.font.size = Pt(14)
+    
+    doc.add_paragraph("_" * 70).alignment = WD_ALIGN_PARAGRAPH.CENTER
+    doc.add_paragraph()
+
 # =====================================================================
 # REPORTES DE INCIDENTES (DOCX)
 # =====================================================================
@@ -38,19 +87,7 @@ def generar_reporte_docx(reporte: dict, save_path: str = None) -> str | None:
         font.size = Pt(11)
 
         # -- Encabezado Principal --
-        header = doc.add_paragraph()
-        header.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        runner = header.add_run("SISTEMA DE BRIGADAS ESCOLARES\n")
-        runner.bold = True
-        runner.font.size = Pt(16)
-        runner.font.color.rgb = RGBColor(0x05, 0x96, 0x69)
-        
-        runner_sub = header.add_run("REPORTE OFICIAL DE INCIDENTE")
-        runner_sub.bold = True
-        runner_sub.font.size = Pt(14)
-        
-        doc.add_paragraph("_" * 70).alignment = WD_ALIGN_PARAGRAPH.CENTER
-        doc.add_paragraph()
+        _add_official_header(doc, "REPORTE OFICIAL DE INCIDENTE")
 
         # -- Información Principal --
         p_info = doc.add_paragraph()
@@ -136,24 +173,14 @@ def generar_reporte_docx(reporte: dict, save_path: str = None) -> str | None:
 def generar_reporte_actividad_docx(reporte: dict, save_path: str = None) -> str | None:
     """Genera un reporte DOCX para las Actividades de brigadas escolares."""
     if Document is None: return None
+    from database.crud_reporte import obtener_media_reporte
     try:
         doc = Document()
         doc.styles['Normal'].font.name = 'Calibri'
         doc.styles['Normal'].font.size = Pt(11)
 
-        # Encabezado
-        header = doc.add_paragraph()
-        header.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run_h = header.add_run("SISTEMA DE BRIGADAS ESCOLARES\n")
-        run_h.bold = True
-        run_h.font.size = Pt(16)
-        run_h.font.color.rgb = RGBColor(0x05, 0x96, 0x69)
-        
-        run_sub = header.add_run("REPORTE OFICIAL DE ACTIVIDAD")
-        run_sub.bold = True
-        run_sub.font.size = Pt(14)
-        doc.add_paragraph("_" * 70).alignment = WD_ALIGN_PARAGRAPH.CENTER
-        doc.add_paragraph()
+        # -- Encabezado Principal --
+        _add_official_header(doc, "INFORME FINAL DE ACTIVIDAD")
 
         # Datos Generales
         fecha_dt = reporte.get('fecha_reporte')
@@ -191,6 +218,24 @@ def generar_reporte_actividad_docx(reporte: dict, save_path: str = None) -> str 
         p_res = doc.add_paragraph(reporte.get('resumen', 'Sin observaciones.'))
         p_res.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
 
+        # Multimedia
+        archivos = obtener_media_reporte("actividad", reporte.get("id"))
+        imagenes = [m for m in archivos if m["tipo"] == "imagen"]
+        videos = [m for m in archivos if m["tipo"] == "video"]
+        
+        if imagenes or videos:
+            doc.add_heading('Evidencia Multimedia', level=2)
+            if videos:
+                p_vid = doc.add_paragraph("Nota: Este reporte incluye videos que no pueden ser incrustados en este documento.")
+                p_vid.runs[0].italic = True
+                
+            for img in imagenes:
+                try:
+                    doc.add_picture(img["ruta"], width=Inches(5))
+                    doc.add_paragraph()  # Espaciado
+                except Exception as e:
+                    doc.add_paragraph(f"[Error cargando imagen: {img['ruta']}]")
+
         doc.add_paragraph()
         doc.add_paragraph("_" * 70).alignment = WD_ALIGN_PARAGRAPH.CENTER
         p_firma = doc.add_paragraph("_____________________________\nFirma del Responsable / Coordinador")
@@ -218,24 +263,14 @@ def generar_reporte_actividad_docx(reporte: dict, save_path: str = None) -> str 
 def generar_reporte_impacto_docx(reporte: dict, save_path: str = None) -> str | None:
     """Genera un reporte DOCX para Evaluación de Impacto."""
     if Document is None: return None
+    from database.crud_reporte import obtener_media_reporte
     try:
         doc = Document()
         doc.styles['Normal'].font.name = 'Calibri'
         doc.styles['Normal'].font.size = Pt(11)
 
-        # Encabezado
-        header = doc.add_paragraph()
-        header.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run_h = header.add_run("SISTEMA DE BRIGADAS ESCOLARES\n")
-        run_h.bold = True
-        run_h.font.size = Pt(16)
-        run_h.font.color.rgb = RGBColor(0x05, 0x96, 0x69)
-        
-        run_sub = header.add_run("REPORTE DE IMPACTO")
-        run_sub.bold = True
-        run_sub.font.size = Pt(14)
-        doc.add_paragraph("_" * 70).alignment = WD_ALIGN_PARAGRAPH.CENTER
-        doc.add_paragraph()
+        # -- Encabezado Principal --
+        _add_official_header(doc, "EVALUACIÓN DE IMPACTO E INDICADORES")
 
         # Datos Generales
         fecha_dt = reporte.get('fecha_generacion')
@@ -279,12 +314,30 @@ def generar_reporte_impacto_docx(reporte: dict, save_path: str = None) -> str | 
         contenido = reporte.get('contenido', '')
         if contenido:
             doc.add_heading('Descripción del Impacto', level=2)
-            p_cnt = doc.add_paragraph(contenido)
-            p_cnt.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        p_desc = doc.add_paragraph(reporte.get('contenido', 'Sin descripción detallada.'))
+        p_desc.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+
+        # Multimedia
+        archivos = obtener_media_reporte("impacto", reporte.get("id"))
+        imagenes = [m for m in archivos if m["tipo"] == "imagen"]
+        videos = [m for m in archivos if m["tipo"] == "video"]
+        
+        if imagenes or videos:
+            doc.add_heading('Evidencia Multimedia', level=2)
+            if videos:
+                p_vid = doc.add_paragraph("Nota: Este reporte incluye videos que no pueden ser incrustados en este documento.")
+                p_vid.runs[0].italic = True
+                
+            for img in imagenes:
+                try:
+                    doc.add_picture(img["ruta"], width=Inches(5))
+                    doc.add_paragraph()  # Espaciado
+                except Exception as e:
+                    doc.add_paragraph(f"[Error cargando imagen: {img['ruta']}]")
 
         doc.add_paragraph()
         doc.add_paragraph("_" * 70).alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p_firma = doc.add_paragraph("_____________________________\nFirma del Evaluador / Responsable")
+        p_firma = doc.add_paragraph("_____________________________\nFirma del Evaluador / Director")
         p_firma.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
         if not save_path:

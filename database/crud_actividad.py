@@ -30,11 +30,12 @@ def obtener_actividades_recientes(limite=5, tipo_brigada=None, solo_usuario_id=N
         condiciones.append("a.Usuario_idUsuarioCreador = %s")
         params.append(solo_usuario_id)
 
-    # BLINDAJE: Si se provee, se inmoviliza la búsqueda solo a esta brigada
+    # BLINDAJE: Si se provee, se inmoviliza la búsqueda solo a esta brigada,
+    # PERO se añaden las actividades globales (institucionales) que no estén completadas.
     brigada_rol_id = kwargs.get("brigada_rol_id")
     if brigada_rol_id is not None:
-        condiciones.append("a.Brigada_idBrigada = %s")
-        params.append(brigada_rol_id)
+        condiciones.append("(a.Brigada_idBrigada = %s OR (a.descripcion LIKE %s AND a.estado <> 'Completada'))")
+        params.extend([brigada_rol_id, '%"es_global": true%'])
 
     where = ("WHERE " + " AND ".join(condiciones)) if condiciones else ""
 
@@ -230,14 +231,19 @@ def obtener_actividad_por_id(id_actividad: int) -> dict | None:
         return None
 
 
-def listar_actividades(tipo_brigada=None, brigada_rol_id=None, institucion_id=None):
-    """Retorna todas las actividades, filtradas por institucion_id, brigada_rol_id o tipo_brigada."""
+def listar_actividades(tipo_brigada=None, brigada_rol_id=None, institucion_id=None, estado=None, excluir_globales=False):
+    """Retorna todas las actividades, filtradas por institucion_id, brigada_rol_id o tipo_brigada.
+    Permite filtrar por estado exacto (ej. 'Completada') y excluir las actividades globales."""
     where_clauses = []
     params = []
     
     if brigada_rol_id is not None:
-        where_clauses.append("b.idBrigada = %s")
-        params.append(brigada_rol_id)
+        if excluir_globales:
+            where_clauses.append("b.idBrigada = %s")
+            params.append(brigada_rol_id)
+        else:
+            where_clauses.append("(b.idBrigada = %s OR (a.descripcion LIKE %s AND a.estado <> 'Completada'))")
+            params.extend([brigada_rol_id, '%"es_global": true%'])
     elif institucion_id is not None:
         where_clauses.append("b.Institucion_Educativa_idInstitucion = %s")
         params.append(institucion_id)
@@ -247,6 +253,10 @@ def listar_actividades(tipo_brigada=None, brigada_rol_id=None, institucion_id=No
     elif tipo_brigada:
         where_clauses.append("b.tipo_brigada = %s")
         params.append(tipo_brigada)
+        
+    if estado is not None:
+        where_clauses.append("a.estado = %s")
+        params.append(estado)
         
     where = ""
     if where_clauses:

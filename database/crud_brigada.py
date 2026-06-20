@@ -197,7 +197,7 @@ def obtener_brigada(id_brigada: int):
         conn.close()
 
 
-def actualizar_brigada(id_brigada: int, nombre: str, area_accion: str = None, descripcion: str = None, coordinador: str = None, color_identificador: str = None, institucion_id: int = None):
+def actualizar_brigada(id_brigada: int, nombre: str, area_accion: str = None, descripcion: str = None, coordinador: str = None, color_identificador: str = None, institucion_id: int = None, subjefe_id: int = None):
     """Actualiza una brigada. area_accion es obligatorio en BD; si no se pasa, se usa nombre o 'General'."""
     conn = get_connection()
     try:
@@ -206,16 +206,25 @@ def actualizar_brigada(id_brigada: int, nombre: str, area_accion: str = None, de
         try:
             cursor.execute(
                 """
-                UPDATE brigada SET nombre_brigada = %s, area_accion = %s, descripcion = %s, coordinador = %s, color_identificador = %s
+                UPDATE brigada SET nombre_brigada = %s, area_accion = %s, descripcion = %s, coordinador = %s, color_identificador = %s, subjefe_id = %s
                 WHERE idBrigada = %s
                 """,
-                (nombre, area, descripcion or None, coordinador or None, color_identificador or None, id_brigada),
+                (nombre, area, descripcion or None, coordinador or None, color_identificador or None, subjefe_id, id_brigada),
             )
-        except Exception:
-            cursor.execute(
-                "UPDATE brigada SET nombre_brigada = %s, area_accion = %s WHERE idBrigada = %s",
-                (nombre, area, id_brigada),
-            )
+        except Exception as e:
+            if "subjefe_id" in str(e).lower() or "unknown column" in str(e).lower():
+                cursor.execute(
+                    """
+                    UPDATE brigada SET nombre_brigada = %s, area_accion = %s, descripcion = %s, coordinador = %s, color_identificador = %s
+                    WHERE idBrigada = %s
+                    """,
+                    (nombre, area, descripcion or None, coordinador or None, color_identificador or None, id_brigada),
+                )
+            else:
+                cursor.execute(
+                    "UPDATE brigada SET nombre_brigada = %s, area_accion = %s WHERE idBrigada = %s",
+                    (nombre, area, id_brigada),
+                )
         conn.commit()
     finally:
         conn.close()

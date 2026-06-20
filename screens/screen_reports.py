@@ -31,7 +31,7 @@ def _obtener_usuario_actual(page: ft.Page) -> dict:
 
 
 def _puede_crear_reportes(rol: str) -> bool:
-    return es_profesor(rol) or es_admin(rol)
+    return es_profesor(rol)
 
 
 def _mostrar_snack(page: ft.Page, mensaje: str, color: str):

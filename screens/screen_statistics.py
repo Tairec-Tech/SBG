@@ -496,6 +496,7 @@ def _build_con_graficos(page: ft.Page) -> ft.Control:
     ck_momento = f"{_ck_prefix}_momento"
     ck_origen  = f"{_ck_prefix}_origen"
     ck_nivel   = f"{_ck_prefix}_nivel"
+    ck_leaderboard = f"{_ck_prefix}_leaderboard"
     
     loading_key = f"{_ck_prefix}_loading"
     loaded_key = f"{_ck_prefix}_loaded"
@@ -514,6 +515,8 @@ def _build_con_graficos(page: ft.Page) -> ft.Control:
     origen_chart_container = ft.Container(height=220, alignment=ft.Alignment(0, 0), expand=True)
     origen_legend_container = ft.Container(alignment=ft.Alignment(0, 0))
     nivel_container = ft.Container(height=250, alignment=ft.Alignment(0, 0))
+    
+    leaderboard_container = ft.Container(alignment=ft.Alignment(0, 0))
 
     def popular_vistas():
         kpis_data = page.data.get(ck_kpis, {})
@@ -552,6 +555,39 @@ def _build_con_graficos(page: ft.Page) -> ft.Control:
         nivel_container.content = _build_bar_chart_categorias(
             nivel_data, "nivel", "actividades"
         )
+        
+        lb_data = page.data.get(ck_leaderboard, [])
+        if lb_data:
+            filas = []
+            for idx, b in enumerate(lb_data, 1):
+                color_bg = COLOR_FONDO_VERDE if idx % 2 == 0 else ft.Colors.TRANSPARENT
+                filas.append(ft.DataRow(
+                    cells=[
+                        ft.DataCell(ft.Text(str(idx), color=COLOR_TEXTO, weight="bold")),
+                        ft.DataCell(ft.Text(b["nombre"], color=COLOR_TEXTO)),
+                        ft.DataCell(ft.Text(b["tipo"].capitalize(), color=COLOR_TEXTO_SEC)),
+                        ft.DataCell(ft.Text(str(b["completadas"]), color=COLOR_PRIMARIO, weight="bold")),
+                    ],
+                ))
+            tabla = ft.DataTable(
+                columns=[
+                    ft.DataColumn(ft.Text("N°", weight="bold")),
+                    ft.DataColumn(ft.Text("Brigada", weight="bold")),
+                    ft.DataColumn(ft.Text("Tipo", weight="bold")),
+                    ft.DataColumn(ft.Text("Completadas", weight="bold"), numeric=True),
+                ],
+                rows=filas,
+                border=ft.border.all(1, COLOR_BORDE),
+                border_radius=10,
+                heading_row_color=ft.Colors.with_opacity(0.05, COLOR_PRIMARIO),
+            )
+            leaderboard_container.content = ft.Column([
+                ft.Text("Top Brigadas (Actividades Completadas)", size=18, weight="bold", color=COLOR_TEXTO),
+                ft.Container(height=8),
+                tabla
+            ])
+        else:
+            leaderboard_container.content = ft.Text("No hay actividades registradas en la institución.", color=COLOR_TEXTO_SEC)
 
     if is_loaded:
         popular_vistas()
@@ -592,6 +628,7 @@ def _build_con_graficos(page: ft.Page) -> ft.Control:
                 por_momento = await asyncio.to_thread(crud_est.get_actividades_por_momento, _tb, brigada_rol_id, _inst_id)
                 por_origen = await asyncio.to_thread(crud_est.get_actividades_por_origen, _tb, brigada_rol_id, _inst_id)
                 por_nivel = await asyncio.to_thread(crud_est.get_actividades_por_nivel, _tb, brigada_rol_id, _inst_id)
+                lb_data = await asyncio.to_thread(crud_est.get_leaderboard_brigadas, _inst_id)
 
             page.data[ck_kpis] = kpis
             page.data[ck_bar] = act_por_mes
@@ -600,6 +637,7 @@ def _build_con_graficos(page: ft.Page) -> ft.Control:
             page.data[ck_momento] = por_momento
             page.data[ck_origen] = por_origen
             page.data[ck_nivel] = por_nivel
+            page.data[ck_leaderboard] = lb_data
             
             # Popular la vista con los datos ya cacheados
             popular_vistas()
@@ -662,23 +700,35 @@ def _build_con_graficos(page: ft.Page) -> ft.Control:
         ),
     ], spacing=0)
 
-    return ft.Column(
-        [
-            titulo_pagina(cfg["titulo"], cfg["subtitulo"]),
-            ft.Container(height=16),
-            kpis_container,
+    # Verificar si el usuario es directivo para mostrar el leaderboard
+    usuario_actual = page.data.get("usuario_actual") or {}
+    rol_actual = usuario_actual.get("rol", "")
+    from database.crud_usuario import es_admin
+    mostrar_leaderboard = es_admin(rol_actual)
+
+    controles_principales = [
+        titulo_pagina(cfg["titulo"], cfg["subtitulo"]),
+        ft.Container(height=16),
+        kpis_container,
+        ft.Container(height=24),
+        fila_1,
+        ft.Container(height=24),
+        tarjeta_pie,
+        _seccion_titulo("Análisis de Planificación Institucional", ft.Icons.SCHOOL_ROUNDED),
+        fila_planificacion,
+        ft.Container(height=20),
+        tarjeta_origen,
+        ft.Container(height=24),
+    ]
+    
+    if mostrar_leaderboard:
+        controles_principales.extend([
+            _seccion_titulo("Clasificación de Brigadas", ft.Icons.LEADERBOARD_ROUNDED),
+            card_principal(leaderboard_container, padding=24),
             ft.Container(height=24),
-            fila_1,
-            ft.Container(height=24),
-            tarjeta_pie,
-            # Sección de planificación con separador visual
-            _seccion_titulo("Análisis de Planificación Institucional", ft.Icons.SCHOOL_ROUNDED),
-            fila_planificacion,
-            ft.Container(height=20),
-            tarjeta_origen,
-            ft.Container(height=24),
-        ], scroll=ft.ScrollMode.AUTO, expand=True, spacing=0
-    )
+        ])
+
+    return ft.Column(controles_principales, scroll=ft.ScrollMode.AUTO, expand=True, spacing=0)
 
 
 def _build_sin_graficos() -> ft.Control:

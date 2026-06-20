@@ -425,6 +425,7 @@ def abrir_form_brigada_registrar(page: ft.Page, on_success=None, usuario_actual=
 
 def abrir_form_brigada_modificar(page: ft.Page, brigada=None, on_success=None):
     """Abre el formulario de modificar brigada. Si brigada (dict) se pasa, precarga datos y al guardar actualiza en BD y llama on_success()."""
+    from database.crud_usuario import listar_estudiantes_por_brigada
     id_brigada_val = brigada.get("idBrigada") if brigada else None
     nombre = ft.TextField(
         label="Nombre",
@@ -446,11 +447,22 @@ def abrir_form_brigada_modificar(page: ft.Page, brigada=None, on_success=None):
         min_lines=2,
         **_CAMPO_BASE,
     )
-    coordinador = ft.TextField(
-        label="Coordinador",
-        hint_text="Nombre del coordinador",
-        value=brigada.get("coordinador") or "" if brigada else "",
-        **_CAMPO_BASE,
+    try:
+        estudiantes = listar_estudiantes_por_brigada(id_brigada_val) if id_brigada_val else []
+    except Exception:
+        estudiantes = []
+        
+    opciones_subjefe = [ft.dropdown.Option("", "Sin sub-líder")]
+    for est in estudiantes:
+        opciones_subjefe.append(ft.dropdown.Option(str(est["idUsuario"]), f"{est.get('nombre', '')} {est.get('apellido', '')} ({est.get('email', '')})"))
+        
+    subjefe_id_val = str(brigada.get("subjefe_id") or "") if brigada and brigada.get("subjefe_id") else ""
+    coordinador = ft.Dropdown(
+        label="Sub-líder",
+        hint_text="Seleccione un estudiante registrado",
+        options=opciones_subjefe,
+        value=subjefe_id_val,
+        **_DROPDOWN_BASE,
     )
 
     def on_guardar(_):
@@ -466,12 +478,20 @@ def abrir_form_brigada_modificar(page: ft.Page, brigada=None, on_success=None):
             page.update()
             return
         try:
+            
+            subjefe_id_parsed = None
+            if coordinador.value and coordinador.value.strip():
+                try:
+                    subjefe_id_parsed = int(coordinador.value)
+                except ValueError:
+                    pass
+
             actualizar_brigada(
                 id_brigada=id_brigada_val,
                 nombre=nom,
                 area_accion=(area_accion.value or "").strip() or None,
                 descripcion=(descripcion.value or "").strip() or None,
-                coordinador=(coordinador.value or "").strip() or None,
+                subjefe_id=subjefe_id_parsed,
             )
             _cerrar_dialogo(page)
             page.snack_bar = ft.SnackBar(ft.Text("¡Brigada actualizada correctamente!"), bgcolor="#22c55e")
@@ -1890,9 +1910,18 @@ def abrir_form_nuevo_reporte(page: ft.Page):
 
 def modal_nuevo_reporte_actividad(page: ft.Page, id_usuario_actual: int, on_success_callback=None):
     from database import crud_actividad, crud_reporte
+    from database.crud_usuario import es_admin
+    import json
     
-    # Obtener actividades para el dropdown
-    actividades = crud_actividad.listar_actividades()
+    try:
+        from components import resolver_contexto_filtrado
+        ctx = resolver_contexto_filtrado(page)
+        brigada_rol_id = ctx.get("brigada_rol_id")
+    except Exception:
+        brigada_rol_id = None
+    
+    # Obtener actividades para el dropdown (solo completadas, propias de la brigada, y excluyendo globales)
+    actividades = crud_actividad.listar_actividades(brigada_rol_id=brigada_rol_id, estado='Completada', excluir_globales=True)
     opciones_actividades = [ft.dropdown.Option(str(a["id"]), a["titulo"]) for a in actividades]
     
     actividad_dd = ft.Dropdown(
@@ -1920,12 +1949,51 @@ def modal_nuevo_reporte_actividad(page: ft.Page, id_usuario_actual: int, on_succ
     resultado.max_lines = 3
     resultado.hint_style = ft.TextStyle(size=14, color=ft.Colors.with_opacity(0.7, COLOR_TEXTO))
     
+    archivos_seleccionados = []
+    texto_archivos = ft.Text("Ningún archivo seleccionado", size=12, color=COLOR_TEXTO_SEC)
+    
+    def on_click_adjuntar(e):
+        import tkinter as tk
+        from tkinter import filedialog
+        import os
+        
+        # Abrir diálogo nativo
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes('-topmost', True)
+        rutas = filedialog.askopenfilenames(
+            title="Seleccionar imágenes o videos",
+            filetypes=[("Archivos multimedia", "*.png *.jpg *.jpeg *.mp4"), ("Todos los archivos", "*.*")]
+        )
+        root.destroy()
+        
+        if rutas:
+            archivos_seleccionados.clear()
+            archivos_seleccionados.extend(rutas)
+            nombres = ", ".join([os.path.basename(r) for r in rutas])
+            texto_archivos.value = f"Seleccionados: {nombres}"
+        else:
+            archivos_seleccionados.clear()
+            texto_archivos.value = "Ningún archivo seleccionado"
+        texto_archivos.update()
+
+    boton_adjuntar = ft.ElevatedButton(
+        "Adjuntar Imágenes/Videos",
+        icon=ft.Icons.ATTACH_FILE,
+        on_click=on_click_adjuntar,
+        style=ft.ButtonStyle(color=COLOR_PRIMARIO, bgcolor=ft.Colors.with_opacity(0.1, COLOR_PRIMARIO))
+    )
+    
     contenido = ft.Column(
         [
             _campo_con_titulo("Actividad Realizada", actividad_dd),
             _campo_con_titulo("Participantes", participantes_tf),
             _campo_con_titulo("Observaciones", observaciones),
-            _campo_con_titulo("Estado Final (Resultado)", resultado, espaciado_abajo=0),
+            _campo_con_titulo("Estado Final (Resultado)", resultado, espaciado_abajo=8),
+            ft.Text("Archivos Adjuntos (opcional)", size=14, weight="w500", color=COLOR_TEXTO),
+            ft.Container(height=4),
+            ft.Row([boton_adjuntar, texto_archivos]),
+            ft.Container(height=16),
         ],
         spacing=0,
     )
@@ -1946,6 +2014,25 @@ def modal_nuevo_reporte_actividad(page: ft.Page, id_usuario_actual: int, on_succ
         )
         
         if lid:
+            import os, shutil
+            from datetime import datetime
+            
+            # Guardar archivos
+            if archivos_seleccionados:
+                os.makedirs("uploads", exist_ok=True)
+                for f_path in archivos_seleccionados:
+                    if f_path:
+                        nombre_original = os.path.basename(f_path)
+                        ext = os.path.splitext(nombre_original)[1].lower()
+                        tipo_archivo = "video" if ext == ".mp4" else "imagen"
+                        nuevo_nombre = f"act_{lid}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{nombre_original}"
+                        ruta_dest = os.path.join("uploads", nuevo_nombre)
+                        try:
+                            shutil.copy(f_path, ruta_dest)
+                            crud_reporte.guardar_media_reporte("actividad", lid, ruta_dest, tipo_archivo)
+                        except Exception as ex:
+                            print(f"Error copiando archivo {nombre_original}: {ex}")
+
             setattr(page, 'snack_bar', ft.SnackBar(ft.Text("Reporte de actividad guardado correctamente."), bgcolor=ft.Colors.GREEN))
             _cerrar_dialogo(page)
             if on_success_callback: on_success_callback()
@@ -1974,18 +2061,12 @@ def modal_nuevo_reporte_impacto(page: ft.Page, id_usuario_actual: int, on_succes
     from database import crud_actividad, crud_reporte
     from database.crud_usuario import es_admin
     
-    import json
     try:
-        user_raw = page.client_storage.get("usuario_actual")
-        usuario_actual = page.data.get("usuario_actual") if getattr(page, "data", None) and getattr(page.data, "get", None) else None
-        if not usuario_actual and user_raw:
-            usuario_actual = json.loads(user_raw) if isinstance(user_raw, str) else (user_raw or {})
+        from components import resolver_contexto_filtrado
+        ctx = resolver_contexto_filtrado(page)
+        brigada_rol_id = ctx.get("brigada_rol_id")
     except Exception:
-        usuario_actual = {}
-        
-    usuario_actual = usuario_actual or {}
-    rol_actual = usuario_actual.get("rol", "")
-    brigada_rol_id = usuario_actual.get("Brigada_idBrigada") if not es_admin(rol_actual) else None
+        brigada_rol_id = None
     
     # Brigadas reales
     brigadas_bd = _obtener_brigadas_form(page, brigada_rol_id)
@@ -2024,8 +2105,8 @@ def modal_nuevo_reporte_impacto(page: ft.Page, id_usuario_actual: int, on_succes
     descripcion_impacto.max_lines = 6
     descripcion_impacto.hint_style = ft.TextStyle(size=14, color=ft.Colors.with_opacity(0.7, COLOR_TEXTO))
 
-    # Actividad asociada (opcional)
-    actividades = crud_actividad.listar_actividades()
+    # Actividad asociada (opcional) - Solo completadas y de su brigada, excluyendo globales
+    actividades = crud_actividad.listar_actividades(brigada_rol_id=brigada_rol_id, estado='Completada', excluir_globales=True)
     opciones_actividades = [ft.dropdown.Option("", "— Ninguna —")] + [
         ft.dropdown.Option(str(a["id"]), a["titulo"]) for a in actividades
     ]
@@ -2056,6 +2137,41 @@ def modal_nuevo_reporte_impacto(page: ft.Page, id_usuario_actual: int, on_succes
         spacing=0,
     )
 
+    archivos_seleccionados = []
+    texto_archivos = ft.Text("Ningún archivo seleccionado", size=12, color=COLOR_TEXTO_SEC)
+    
+    def on_click_adjuntar(e):
+        import tkinter as tk
+        from tkinter import filedialog
+        import os
+        
+        # Abrir diálogo nativo
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes('-topmost', True)
+        rutas = filedialog.askopenfilenames(
+            title="Seleccionar imágenes o videos",
+            filetypes=[("Archivos multimedia", "*.png *.jpg *.jpeg *.mp4"), ("Todos los archivos", "*.*")]
+        )
+        root.destroy()
+        
+        if rutas:
+            archivos_seleccionados.clear()
+            archivos_seleccionados.extend(rutas)
+            nombres = ", ".join([os.path.basename(r) for r in rutas])
+            texto_archivos.value = f"Seleccionados: {nombres}"
+        else:
+            archivos_seleccionados.clear()
+            texto_archivos.value = "Ningún archivo seleccionado"
+        texto_archivos.update()
+    
+    boton_adjuntar = ft.ElevatedButton(
+        "Adjuntar Imágenes/Videos",
+        icon=ft.Icons.ATTACH_FILE,
+        on_click=on_click_adjuntar,
+        style=ft.ButtonStyle(color=COLOR_PRIMARIO, bgcolor=ft.Colors.with_opacity(0.1, COLOR_PRIMARIO))
+    )
+
     contenido_modal = ft.Column(
         [
             _campo_con_titulo("Brigada", brigada_dd),
@@ -2064,7 +2180,11 @@ def modal_nuevo_reporte_impacto(page: ft.Page, id_usuario_actual: int, on_succes
             fila_valor_unidad,
             ft.Container(height=16),
             _campo_con_titulo("Descripción del Impacto", descripcion_impacto),
-            _campo_con_titulo("Actividad Asociada (opcional)", actividad_dd, espaciado_abajo=0),
+            _campo_con_titulo("Actividad Asociada (opcional)", actividad_dd, espaciado_abajo=8),
+            ft.Text("Archivos Adjuntos (opcional)", size=14, weight="w500", color=COLOR_TEXTO),
+            ft.Container(height=4),
+            ft.Row([boton_adjuntar, texto_archivos]),
+            ft.Container(height=16),
         ],
         spacing=0,
     )
@@ -2102,6 +2222,25 @@ def modal_nuevo_reporte_impacto(page: ft.Page, id_usuario_actual: int, on_succes
         )
         
         if lid:
+            import os, shutil
+            from datetime import datetime
+            
+            # Guardar archivos
+            if archivos_seleccionados:
+                os.makedirs("uploads", exist_ok=True)
+                for f_path in archivos_seleccionados:
+                    if f_path:
+                        nombre_original = os.path.basename(f_path)
+                        ext = os.path.splitext(nombre_original)[1].lower()
+                        tipo_archivo = "video" if ext == ".mp4" else "imagen"
+                        nuevo_nombre = f"imp_{lid}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{nombre_original}"
+                        ruta_dest = os.path.join("uploads", nuevo_nombre)
+                        try:
+                            shutil.copy(f_path, ruta_dest)
+                            crud_reporte.guardar_media_reporte("impacto", lid, ruta_dest, tipo_archivo)
+                        except Exception as ex:
+                            print(f"Error copiando archivo {nombre_original}: {ex}")
+
             setattr(page, 'snack_bar', ft.SnackBar(ft.Text("Reporte de impacto guardado correctamente."), bgcolor=ft.Colors.GREEN))
             _cerrar_dialogo(page)
             if on_success_callback: on_success_callback()
@@ -2130,19 +2269,23 @@ def modal_nuevo_reporte_impacto(page: ft.Page, id_usuario_actual: int, on_succes
 # ---------- Profesor — Registro y Asignación (v2) ----------
 
 
-def abrir_form_profesor_registrar(page: ft.Page, on_success=None):
+def abrir_form_personal_registrar(page: ft.Page, on_success=None):
     """
     Formulario para que un Directivo registre un nuevo Profesor.
     Auto-inyecta institucion_id desde la sesión.
     Opcionalmente permite asignar brigada inmediatamente.
     """
-    from database.crud_usuario import crear_profesor_institucional
+    from database.crud_usuario import crear_usuario_institucional
     from database.crud_brigada import listar_brigadas_por_institucion
 
     usuario_actual = {}
     try:
         if getattr(page, "data", None) and isinstance(page.data.get("usuario_actual"), dict):
             usuario_actual = page.data["usuario_actual"]
+        else:
+            import json
+            raw = page.client_storage.get("usuario_actual")
+            usuario_actual = json.loads(raw) if isinstance(raw, str) else (raw or {})
     except Exception:
         pass
     institucion_id = usuario_actual.get("institucion_id")
@@ -2152,11 +2295,21 @@ def abrir_form_profesor_registrar(page: ft.Page, on_success=None):
         page.update()
         return
 
+    # Dropdown para rol en vez de RadioGroup para compatibilidad segura
+    rol_radio = ft.Dropdown(
+        options=[
+            ft.dropdown.Option("Profesor", "Profesor"),
+            ft.dropdown.Option("Estudiante", "Estudiante"),
+        ],
+        value="Profesor",
+        **_DROPDOWN_BASE,
+    )
+
     # Campos del formulario
-    nombre = _campo_texto("Nombre *", "Nombre del profesor")
-    apellido = _campo_texto("Apellido *", "Apellido del profesor")
+    nombre = _campo_texto("Nombre *", "Nombre")
+    apellido = _campo_texto("Apellido *", "Apellido")
     cedula = _campo_texto("Cédula", "V-12345678")
-    email = _campo_texto("Correo electrónico *", "profesor@correo.com")
+    email = _campo_texto("Correo electrónico *", "correo@ejemplo.com")
     usuario_str = _campo_texto("Usuario *", "nombre_usuario")
     contrasena = _campo_texto("Contraseña *", "Mínimo 6 caracteres", password=True)
     confirmar = _campo_texto("Confirmar contraseña *", "", password=True)
@@ -2180,6 +2333,17 @@ def abrir_form_profesor_registrar(page: ft.Page, on_success=None):
         border_radius=RADIO,
         hint_style=ft.TextStyle(size=14, color=ft.Colors.GREY_700),
     )
+    container_brigada = _campo_con_titulo("Asignar a brigada *", dropdown_brigada)
+
+    def _on_rol_change(e):
+        if rol_radio.value == "Estudiante":
+            container_brigada.visible = False
+            dropdown_brigada.value = None
+        else:
+            container_brigada.visible = True
+        page.update()
+
+    rol_radio.on_change = _on_rol_change
 
     def on_crear(_):
         btn_registrar.disabled = True
@@ -2234,14 +2398,14 @@ def abrir_form_profesor_registrar(page: ft.Page, on_success=None):
                     brigada_id = int(dropdown_brigada.value)
                 except (ValueError, TypeError):
                     brigada_id = None
-            if not brigada_id:
+            if rol_radio.value == "Profesor" and not brigada_id:
                 if not brigadas_disp:
                     _error("No hay brigadas disponibles sin profesor responsable en esta institucion.")
                 else:
                     _error("Seleccione una brigada para asignar al profesor.")
                 return
 
-            crear_profesor_institucional(
+            crear_usuario_institucional(
                 nombre=nombre.value.strip(),
                 apellido=apellido.value.strip(),
                 email=email_val,
@@ -2250,19 +2414,21 @@ def abrir_form_profesor_registrar(page: ft.Page, on_success=None):
                 cedula=cedula_val,
                 institucion_id=institucion_id,
                 brigada_id=brigada_id,
+                rol=rol_radio.value,
             )
             _cerrar_dialogo(page)
-            page.snack_bar = ft.SnackBar(ft.Text("Profesor registrado correctamente."), bgcolor="#22c55e")
+            page.snack_bar = ft.SnackBar(ft.Text(f"{rol_radio.value} registrado correctamente."), bgcolor="#22c55e")
             page.snack_bar.open = True
             if on_success:
                 on_success()
             page.update()
         except Exception as ex:
-            _error(f"Error al registrar profesor: {ex}")
+            _error(f"Error al registrar {rol_radio.value.lower()}: {ex}")
 
     contenido = ft.Container(
         content=ft.Column(
             [
+                _campo_con_titulo("Rol *", rol_radio),
                 _campo_con_titulo("Nombre *", nombre),
                 _campo_con_titulo("Apellido *", apellido),
                 _campo_con_titulo("Cédula", cedula),
@@ -2271,7 +2437,7 @@ def abrir_form_profesor_registrar(page: ft.Page, on_success=None):
                 _campo_con_titulo("Contraseña *", contrasena),
                 _campo_con_titulo("Confirmar contraseña *", confirmar),
                 ft.Container(height=8),
-                _campo_con_titulo("Asignar a brigada *", dropdown_brigada),
+                container_brigada,
             ],
             spacing=0,
         ),
@@ -2282,7 +2448,7 @@ def abrir_form_profesor_registrar(page: ft.Page, on_success=None):
     dialogo = ft.AlertDialog(
         modal=True,
         bgcolor=COLOR_CARD,
-        title=ft.Text("Registrar Profesor", size=18, weight="w600", color=COLOR_TEXTO),
+        title=ft.Text("Registrar Personal/Estudiante", size=18, weight="w600", color=COLOR_TEXTO),
         content=ft.Container(
             content=ft.Column([contenido], scroll=ft.ScrollMode.AUTO, tight=True),
             width=ANCHO_FORM, height=ALTURA_MAX_FORM, bgcolor=COLOR_CARD,

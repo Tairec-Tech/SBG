@@ -112,11 +112,7 @@ def _abrir_modal_actividad(page: ft.Page, on_success=None, usuario_actual=None, 
         value=plan_data.get("origen_actividad") or "Cronograma",
         content_padding=ft.Padding(12, 14), **_DROPDOWN,
     )
-    efemeride_campo = ft.TextField(
-        hint_text="Efeméride (si aplica)",
-        value=plan_data.get("efemeride", ""),
-        content_padding=ft.Padding(14, 14), **_CAMPO,
-    )
+
     nivel_educativo_campo = ft.Dropdown(
         options=[ft.dropdown.Option(x) for x in ["Integral", "Inicial", "Primaria", "Media General"]],
         value=plan_data.get("nivel_educativo") or "Integral",
@@ -265,14 +261,17 @@ def _abrir_modal_actividad(page: ft.Page, on_success=None, usuario_actual=None, 
             brigada_info_text = ft.Text("No tienes brigadas asignadas.", color="#ef4444", italic=True)
             brigada_bloqueada = True
     else:
-        # Directivo: dropdown filtrado por institución
+        # Directivo: No elige brigada. Se asigna automáticamente a la primera (como contenedor) y se fuerza es_global
         try:
             brigadas_disponibles = crud_brigada.listar_brigadas(institucion_id=ctx.get("institucion_id"))
             if brigadas_disponibles:
-                opciones = [ft.dropdown.Option(str(b["idBrigada"]), b["nombre_brigada"]) for b in brigadas_disponibles]
-                dd_brigada = ft.Dropdown(hint_text="Seleccione brigada", options=opciones, value=opciones[0].key, content_padding=ft.Padding(12, 14), **_DROPDOWN)
+                brigada_id_fija = brigadas_disponibles[0]["idBrigada"]
+                brigada_info_text = ft.Container(
+                    content=ft.Row([ft.Icon(ft.Icons.ACCOUNT_BALANCE, size=16, color=COLOR_PRIMARIO), ft.Text("Actividad Institucional (Global)", size=14, weight="w600", color=COLOR_PRIMARIO)], spacing=8),
+                    padding=14, bgcolor=ft.Colors.with_opacity(0.08, COLOR_PRIMARIO), border_radius=RADIO, border=ft.Border.all(1, COLOR_PRIMARIO),
+                )
             else:
-                brigada_info_text = ft.Text("No hay brigadas institucionales disponibles para planificar actividades.", color="#ef4444", italic=True, size=13)
+                brigada_info_text = ft.Text("No hay brigadas en la institución para vincular la actividad.", color="#ef4444", italic=True, size=13)
                 brigada_bloqueada = True
         except Exception as e:
             brigada_info_text = ft.Text(str(e), size=13, color="#ef4444", italic=True)
@@ -284,6 +283,9 @@ def _abrir_modal_actividad(page: ft.Page, on_success=None, usuario_actual=None, 
         value=estado_actual, content_padding=ft.Padding(12, 14), **_DROPDOWN,
     )
 
+    # ── Checkbox Global (Obsoleto: Admins siempre crean globales) ──
+    checkbox_global = None
+
     def _get_brigada_id():
         if brigada_id_fija: return brigada_id_fija
         if dd_brigada and dd_brigada.value: return int(dd_brigada.value)
@@ -294,7 +296,7 @@ def _abrir_modal_actividad(page: ft.Page, on_success=None, usuario_actual=None, 
 
     campos_avanzados = ft.Column([
         ft.Row([ft.Container(_campo_con_titulo("Momento Escolar", momento_escolar_campo), expand=True), ft.Container(width=12), ft.Container(_campo_con_titulo("Origen", origen_campo), expand=True)], spacing=0),
-        ft.Row([ft.Container(_campo_con_titulo("Efeméride (opcional)", efemeride_campo), expand=True), ft.Container(width=12), ft.Container(_campo_con_titulo("Nivel Educativo", nivel_educativo_campo), expand=True)], spacing=0),
+        _campo_con_titulo("Nivel Educativo", nivel_educativo_campo),
         _campo_con_titulo("Necesidad Detectada", necesidad_campo),
         _campo_con_titulo("Resultado Esperado", resultado_esperado_campo),
     ], spacing=0, visible=_avanzado_state["abierto"])
@@ -307,7 +309,7 @@ def _abrir_modal_actividad(page: ft.Page, on_success=None, usuario_actual=None, 
         "Detalles de planificación institucional",
         size=13, weight="w600", color=COLOR_PRIMARIO,
     )
-    badge_campos = ft.Text("6 campos opcionales", size=11, color=COLOR_TEXTO_SEC, italic=True)
+    badge_campos = ft.Text("5 campos opcionales", size=11, color=COLOR_TEXTO_SEC, italic=True)
 
     def _toggle_avanzado(_):
         _avanzado_state["abierto"] = not _avanzado_state["abierto"]
@@ -363,7 +365,6 @@ def _abrir_modal_actividad(page: ft.Page, on_success=None, usuario_actual=None, 
         nuevo_plan = {
             "momento_escolar": momento_escolar_campo.value or "Ordinario",
             "origen_actividad": origen_campo.value or "Cronograma",
-            "efemeride": (efemeride_campo.value or "").strip(),
             "necesidad_detectada": (necesidad_campo.value or "").strip(),
             "objetivo_plan": objetivo_campo.value.strip(),
             "nivel_educativo": nivel_educativo_campo.value or "Integral",
@@ -373,6 +374,7 @@ def _abrir_modal_actividad(page: ft.Page, on_success=None, usuario_actual=None, 
                 if mostrar_resultado_obtenido
                 else plan_data.get("resultado_obtenido", "")
             ),
+            "es_global": True if es_admin(rol) else False,
         }
         json_desc = util_json_plan.serializar_plan(nuevo_plan)
 
@@ -427,6 +429,10 @@ def _abrir_modal_actividad(page: ft.Page, on_success=None, usuario_actual=None, 
 
     # Estado
     campos.append(_campo_con_titulo("Estado de la Actividad", dd_estado))
+
+    if checkbox_global:
+        campos.append(ft.Container(height=4))
+        campos.append(checkbox_global)
 
     # Resultado Obtenido (solo edición de Completada)
     if mostrar_resultado_obtenido:
@@ -544,6 +550,13 @@ def card_actividad(act, usuario_actual, on_complete=None, on_edit=None, on_delet
 
     rol = usuario_actual.get("rol", "") if usuario_actual else ""
     usuario_id = usuario_actual.get("id") if usuario_actual else None
+
+    es_global = plan.get("es_global", False)
+    if es_global:
+        brigada = "Institucional (Global)"
+        
+    if es_global and es_profesor(rol):
+        solo_lectura = True
 
     es_propietario = usuario_id is not None and (es_admin(rol) or creador_id == usuario_id)
     puede_actuar = es_propietario and not solo_lectura

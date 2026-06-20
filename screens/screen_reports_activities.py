@@ -14,6 +14,7 @@ from components import titulo_pagina, boton_primario
 from util_docx import generar_reporte_actividad_docx
 from forms import modal_nuevo_reporte_actividad
 from database.crud_usuario import es_admin, es_profesor
+from modals_jira import abrir_modal_detalle_reporte
 
 
 def _mostrar_snack(page: ft.Page, mensaje: str, color: str):
@@ -23,7 +24,7 @@ def _mostrar_snack(page: ft.Page, mensaje: str, color: str):
 
 
 def _puede_crear_reportes(rol: str) -> bool:
-    return es_admin(rol) or es_profesor(rol)
+    return es_profesor(rol)
 
 
 def _obtener_usuario_actual(page: ft.Page) -> dict:
@@ -63,8 +64,8 @@ def build(page: ft.Page, **kwargs) -> ft.Control:
     )
     # Regla: Admin o Profesor de brigada pueden ver reportes.
     puede_ver = not sin_contexto_operativo
-    # Solo los profesores / coordinadores pueden crear. Admin no crea, solo lee.
-    puede_crear_reporte = puede_ver and not es_admin(rol)
+    # Solo los profesores pueden crear reportes. Administradores solo leen y descargan.
+    puede_crear_reporte = puede_ver and _puede_crear_reportes(rol)
     
     file_picker = ft.FilePicker()
 
@@ -140,7 +141,6 @@ def build(page: ft.Page, **kwargs) -> ft.Control:
                 momento = plan.get("momento_escolar", "")
                 origen = plan.get("origen_actividad", "")
                 nivel = plan.get("nivel_educativo", "")
-                efemeride = plan.get("efemeride", "")
 
                 def _chip(texto, color):
                     return ft.Container(
@@ -156,8 +156,7 @@ def build(page: ft.Page, **kwargs) -> ft.Control:
                     chips_planificacion.append(_chip(origen, "#6366f1"))
                 if nivel and nivel != "Sin nivel":
                     chips_planificacion.append(_chip(f"Nivel: {nivel}", "#f59e0b"))
-                if efemeride:
-                    chips_planificacion.append(_chip(f"📅 {efemeride}", "#059669"))
+
 
             card = ft.Container(
                 content=ft.Column(
@@ -214,6 +213,7 @@ def build(page: ft.Page, **kwargs) -> ft.Control:
                 border_radius=RADIO,
                 border=ft.Border.all(1, COLOR_BORDE),
                 shadow=get_sombra_card(),
+                on_click=lambda e, r_data=r: abrir_modal_detalle_reporte(page, r_data, "actividad", descargar_doc),
             )
             cards.append(card)
         return cards

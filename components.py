@@ -201,17 +201,43 @@ async def build_sidebar(page: ft.Page, contenido_area: ft.Container, vista_actua
         on_click=lambda e: on_logout(),
     )
 
+    inst_info = None
+    if usuario_data:
+        from database.crud_usuario import obtener_institucion_por_usuario
+        try:
+            inst_info = obtener_institucion_por_usuario(usuario_data.get("idUsuario"))
+        except Exception:
+            inst_info = None
+    
+    nombre_inst = "Municipio Maracaibo"
+    logo_control = ft.Icon(ft.Icons.SHIELD_ROUNDED, color=COLOR_PRIMARIO_CLARO, size=28)
+    
+    if inst_info:
+        if inst_info.get("nombre_institucion"):
+            nombre_inst = inst_info.get("nombre_institucion")
+        logo_ruta = inst_info.get("logo_ruta")
+        if logo_ruta:
+            import os
+            if os.path.exists(logo_ruta):
+                import base64
+                try:
+                    with open(logo_ruta, "rb") as f:
+                        b64_logo = base64.b64encode(f.read()).decode("utf-8")
+                    logo_control = ft.Image(src=f"data:image/png;base64,{b64_logo}", width=32, height=32, fit="contain")
+                except Exception:
+                    pass
+
     header_section = ft.Column(
         [
             ft.Container(height=24),
             ft.Row(
                 [
-                    ft.Icon(ft.Icons.SHIELD_ROUNDED, color=COLOR_PRIMARIO_CLARO, size=28),
+                    logo_control,
                     ft.Container(width=10),
                     ft.Column(
                         [
                             ft.Text("Brigadas Escolares", size=16, weight="bold", color=COLOR_SIDEBAR_TEXTO),
-                            ft.Text("Municipio Maracaibo", size=11, color=COLOR_SIDEBAR_TEXTO_SEC),
+                            ft.Text(nombre_inst, size=11, color=COLOR_SIDEBAR_TEXTO_SEC, width=150, max_lines=2, overflow=ft.TextOverflow.ELLIPSIS),
                         ],
                         spacing=0,
                         horizontal_alignment=ft.CrossAxisAlignment.START,

@@ -87,3 +87,48 @@ Mantener solo documentación unificada bajo:
 - nombre SBE
 - 4 brigadas escolares
 - módulos reales del software
+
+## 9. Error de Alineación en Flet (ft.alignment.center)
+**Severidad sugerida:** Baja
+
+### Descripción
+Al intentar alinear elementos usando `ft.alignment.center` (ej. en modales o vistas de reporte), la aplicación arroja un error `AttributeError: module 'flet.controls.alignment' has no attribute 'center'`. Esto se debe a diferencias en la API de alineación de Flet según la versión.
+
+### Solución / Acción recomendada
+Reemplazar cualquier uso de `ft.alignment.center` u otros atributos estáticos de alineación que fallen por sus equivalentes como objeto de clase: `ft.Alignment(0, 0)` para centrar. Ya fue aplicado en `modals_jira.py`.
+
+## 10. API Incompatible de FilePicker (on_result)
+**Severidad sugerida:** Baja
+
+### Descripción
+Al intentar crear un `ft.FilePicker` pasando el argumento `on_result` en el constructor, Flet v0.8.x arroja `TypeError: FilePicker.__init__() got an unexpected keyword argument 'on_result'`.
+
+### Solución / Acción recomendada
+Instanciar el `FilePicker` sin el argumento y asignar el callback posteriormente a la propiedad (`picker.on_result = callback`). Fue corregido en los modales de `forms.py`.
+
+## 11. Error "Unknown control: FilePicker" en Flet v0.80.x
+**Severidad sugerida:** Media
+
+### Descripción
+Al intentar abrir el modal de reportes, Flet lanza un error interno en el cliente de Flutter indicando `Unknown control: FilePicker`. Esto se debe a que en versiones recientes, el componente `FilePicker` fue extraído o requiere inicialización asíncrona diferente que rompe el entorno local actual.
+
+### Solución / Acción recomendada
+Se eliminó la dependencia de `ft.FilePicker` por completo. Como es una aplicación de escritorio local, se implementó en su lugar un diálogo nativo de Windows usando `tkinter.filedialog` el cual no presenta conflictos con la UI y es 100% estable.
+
+## 12. Atributo faltante en enum de Flet (ft.ImageFit)
+**Severidad sugerida:** Baja
+
+### Descripción
+Al intentar renderizar una imagen con el ajuste de Flet (ej. `fit=ft.ImageFit.COVER`), la librería arroja el error `AttributeError: module 'flet' has no attribute 'ImageFit'`. Esto ocurre porque versiones de Flet no incluyen ciertas enumeraciones que antes o después sí existen en el API.
+
+### Solución / Acción recomendada
+Pasar directamente la cadena de texto (ej. `fit="cover"`) en lugar del objeto `ImageFit` del framework, lo cual está soportado universalmente y no rompe la ejecución. Se ha aplicado en la visualización de la galería de medios.
+
+## 13. Desaparición del Sidebar por Imagen Local Absoluta
+**Severidad sugerida:** Alta
+
+### Descripción
+Si se proporciona una ruta absoluta local a la propiedad `src` de un `ft.Image` (ej. `C:\ruta\imagen.png`), el control falla en el cliente de Flutter ya que por seguridad Flet solo sirve archivos desde su carpeta de *assets* configurada. Este error de renderizado en cascada hace que todo el contenedor padre (en este caso el Sidebar o menú) desaparezca por completo sin dejar rastro en la consola de Python.
+
+### Solución / Acción recomendada
+Convertir la imagen a Base64 usando Python (`base64.b64encode`) y pasarlo al parámetro `src` del control `ft.Image` utilizando el formato Data URI (`src="data:image/png;base64,..."`). Se debe evitar el uso de la propiedad `src_base64` ya que la misma no existe en el constructor de Flet v0.80.5 y rompe el generador de UI silenciosamente. Ya implementado en el header de `components.py`.

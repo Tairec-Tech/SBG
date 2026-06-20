@@ -19,12 +19,12 @@ def deserializar_plan(plan_json_str: str) -> dict:
     estructura_base = {
         "momento_escolar": "",
         "origen_actividad": "",
-        "efemeride": "",
         "necesidad_detectada": "",
         "objetivo_plan": "",
         "nivel_educativo": "",
         "resultado_esperado": "",
-        "resultado_obtenido": ""
+        "resultado_obtenido": "",
+        "es_global": False
     }
     
     # Si viene nulo o puramente en blanco

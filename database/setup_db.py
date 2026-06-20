@@ -30,6 +30,7 @@ except ImportError:
 SQL_FILES = [
     os.path.join(SCRIPT_DIR, "db_brigadas_maracaibo.sql"),
     os.path.join(SCRIPT_DIR, "migracion_v2_registro.sql"),
+    os.path.join(SCRIPT_DIR, "migracion_v3_media.sql"),
     os.path.join(SCRIPT_DIR, "seed_super.sql"),
 ]
 

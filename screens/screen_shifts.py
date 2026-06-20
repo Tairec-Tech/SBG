@@ -398,10 +398,9 @@ def build(page: ft.Page, content_area=None, **kwargs) -> ft.Control:
                 # Extraer JSON de la actividad
                 plan = util_json_plan.deserializar_plan(act.get("descripcion", ""))
                 origen = plan.get("origen_actividad", "Actividad")
-                efemeride = plan.get("efemeride", "")
                 momento = plan.get("momento_escolar", "")
 
-                label_origen = f"{origen}: {efemeride}" if efemeride else origen
+                label_origen = origen
                 notas_act = f"{momento} - {plan.get('objetivo_plan', '')}"
                 
                 item_virtual = {
