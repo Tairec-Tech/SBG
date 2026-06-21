@@ -67,6 +67,7 @@ def build(page: ft.Page, **kwargs) -> ft.Control:
     # Solo los profesores pueden crear reportes. Administradores solo leen y descargan.
     puede_crear_reporte = puede_ver and _puede_crear_reportes(rol)
     
+    reportes = []
     file_picker = ft.FilePicker()
 
     async def descargar_doc(reporte_data):
@@ -88,8 +89,8 @@ def build(page: ft.Page, **kwargs) -> ft.Control:
 
     reports_col = ft.Column(spacing=14)
 
-    def _build_report_list():
-        if not reportes:
+    def _build_report_list(reportes_list):
+        if not reportes_list:
             return [
                 ft.Container(
                     content=ft.Column(
@@ -106,7 +107,7 @@ def build(page: ft.Page, **kwargs) -> ft.Control:
             ]
 
         cards = []
-        for r in reportes:
+        for r in reportes_list:
             fecha_dt = r.get("fecha_reporte")
             fecha_str = fecha_dt.strftime("%d/%m/%Y %H:%M") if isinstance(fecha_dt, datetime) else str(fecha_dt)
 
@@ -218,26 +219,33 @@ def build(page: ft.Page, **kwargs) -> ft.Control:
             cards.append(card)
         return cards
 
-    def cargar_datos():
-        nonlocal reportes
-        if not puede_ver:
-            reportes = []
-        else:
-            reportes = crud_reporte.listar_reportes_actividad(_tb, brigada_rol_id, _inst_id)
-        reports_col.controls = _build_report_list()
+    contenedor_dinamico = ft.Container(
+        content=ft.Column(
+            [ft.ProgressRing(color=COLOR_PRIMARIO, stroke_width=3), ft.Container(height=10), ft.Text("Cargando reportes...", color=COLOR_TEXTO_SEC, size=13)],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            alignment=ft.MainAxisAlignment.CENTER,
+        ),
+        expand=True,
+        alignment=ft.Alignment(0, 0)
+    )
+
+    async def _cargar_en_background():
+        import asyncio
+        await asyncio.sleep(0.05)
+        lista_reportes = []
+        if puede_ver:
+            lista_reportes = crud_reporte.listar_reportes_actividad(_tb, brigada_rol_id, _inst_id)
+        reports_col.controls = _build_report_list(lista_reportes)
+        contenedor_dinamico.content = reports_col
         page.update()
 
-    if not puede_ver:
-        reportes = []
-    else:
-        reportes = crud_reporte.listar_reportes_actividad(_tb, brigada_rol_id, _inst_id)
-    reports_col.controls = _build_report_list()
+    page.run_task(_cargar_en_background)
 
     def _abrir_modal_nuevo(e):
         if not puede_crear_reporte:
             _mostrar_snack(page, "No tiene permisos para crear reportes de actividad.", ft.Colors.RED)
             return
-        modal_nuevo_reporte_actividad(page=page, id_usuario_actual=usuario_id, on_success_callback=cargar_datos)
+        modal_nuevo_reporte_actividad(page=page, id_usuario_actual=usuario_id, on_success_callback=lambda: page.run_task(_cargar_en_background))
 
     acciones = []
     if puede_crear_reporte:
@@ -260,7 +268,7 @@ def build(page: ft.Page, **kwargs) -> ft.Control:
         [
             header_row,
             ft.Container(height=24),
-            reports_col,
+            contenedor_dinamico,
         ],
         scroll=ft.ScrollMode.AUTO,
         expand=True,

@@ -34,7 +34,7 @@ def build(page: ft.Page, **kwargs) -> ft.Control:
     _tb = ctx.get("tipo_brigada")
     _inst_id = ctx.get("institucion_id")
     
-    _ck_prefix = f"_{ctx['modo']}_{ctx.get('institucion_id')}_{ctx.get('brigada_rol_id')}"
+    _ck_prefix = f"dash_{ctx['modo']}_{ctx.get('institucion_id')}_{ctx.get('brigada_rol_id')}"
     cache_key_stats = f"{_ck_prefix}_kpi"
     cache_key_acts  = f"{_ck_prefix}_acts"
     loading_key = f"{_ck_prefix}_loading"

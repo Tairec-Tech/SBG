@@ -73,28 +73,35 @@ def build(page: ft.Page, **kwargs) -> ft.Control:
     ctx = resolver_contexto_filtrado(page)
     modo = ctx.get("modo")
 
-    # Contenedor dinámico que permite swap entre grid y guía
-    contenedor_dinamico = ft.Container(expand=True)
+    contenedor_dinamico = ft.Container(
+        content=ft.Column(
+            [ft.ProgressRing(color=COLOR_PRIMARIO, stroke_width=3), ft.Container(height=10), ft.Text("Cargando contenido...", color=COLOR_TEXTO_SEC, size=13)],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            alignment=ft.MainAxisAlignment.CENTER,
+        ),
+        expand=True,
+        alignment=ft.Alignment(0, 0)
+    )
 
-    if modo == "institucional":
-        # Directivo/Admin: vista con 11 tarjetas
-        contenedor_dinamico.content = _build_grid_tarjetas(page, contenedor_dinamico)
-
-    elif modo == "brigada":
-        # Profesor con brigada: guía directa
-        usuario = (page.data or {}).get("usuario_actual", {})
-        tipo = obtener_tipo_brigada_por_id(usuario.get("Brigada_idBrigada"))
-        if tipo and tipo in CONTENIDO_EDUCATIVO:
-            contenedor_dinamico.content = _build_vista_guia(page, tipo, mostrar_volver=False)
+    async def _cargar_en_background():
+        import asyncio
+        await asyncio.sleep(0.05)
+        if modo == "institucional":
+            contenedor_dinamico.content = _build_grid_tarjetas(page, contenedor_dinamico)
+        elif modo == "brigada":
+            usuario = (page.data or {}).get("usuario_actual", {})
+            tipo = obtener_tipo_brigada_por_id(usuario.get("Brigada_idBrigada"))
+            if tipo and tipo in CONTENIDO_EDUCATIVO:
+                contenedor_dinamico.content = _build_vista_guia(page, tipo, mostrar_volver=False)
+            else:
+                contenedor_dinamico.content = _build_empty_contenido(tipo)
+        elif modo == "sin_brigada":
+            contenedor_dinamico.content = _build_empty_state_sin_brigada()
         else:
-            contenedor_dinamico.content = _build_empty_contenido(tipo)
+            contenedor_dinamico.content = _build_empty_state_sin_acceso(ctx.get("error"))
+        page.update()
 
-    elif modo == "sin_brigada":
-        contenedor_dinamico.content = _build_empty_state_sin_brigada()
-
-    else:
-        # sin_acceso u otro caso
-        contenedor_dinamico.content = _build_empty_state_sin_acceso(ctx.get("error"))
+    page.run_task(_cargar_en_background)
 
     contenido = ft.Column(
         [

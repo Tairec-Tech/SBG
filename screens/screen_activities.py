@@ -701,10 +701,24 @@ def build(page: ft.Page, content_area=None, **kwargs) -> ft.Control:
         page.snack_bar.open = True
         page.update()
 
+    lista_container = ft.Container(expand=True)
+
     def refresh():
-        if content_area:
-            content_area.content = build(page, content_area)
+        # Cuando se hace un refresh, mostramos el loading y recargamos
+        lista_container.content = ft.Column(
+            [ft.ProgressRing(color=COLOR_PRIMARIO, stroke_width=3), ft.Container(height=10), ft.Text("Actualizando actividades...", color=COLOR_TEXTO_SEC, size=13)],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            alignment=ft.MainAxisAlignment.CENTER,
+        )
+        page.update()
+
+        async def _refresh_async():
+            import asyncio
+            await asyncio.sleep(0.05)
+            lista_container.content = _construir_lista()
             page.update()
+
+        page.run_task(_refresh_async)
 
     # ─── Callbacks de acciones ────────────────────────────────────
     def on_completar(id_actividad: int):
@@ -791,8 +805,24 @@ def build(page: ft.Page, content_area=None, **kwargs) -> ft.Control:
         ),
     ]
 
-    header_items.append(ft.Container(height=16))
-    header_items.append(_construir_lista())
+    lista_container = ft.Container(
+        content=ft.Column(
+            [ft.ProgressRing(color=COLOR_PRIMARIO, stroke_width=3), ft.Container(height=10), ft.Text("Cargando actividades...", color=COLOR_TEXTO_SEC, size=13)],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            alignment=ft.MainAxisAlignment.CENTER,
+        ),
+        expand=True,
+        alignment=ft.Alignment(0, 0)
+    )
+
+    async def _cargar_datos():
+        import asyncio
+        await asyncio.sleep(0.05)
+        lista_container.content = _construir_lista()
+        page.update()
+
+    page.run_task(_cargar_datos)
+    header_items.append(lista_container)
 
     contenido = ft.Column(
         header_items,

@@ -72,15 +72,74 @@ def build(page: ft.Page, **kwargs) -> ft.Control:
         reports_col.controls = _build_report_list(page, reportes, file_picker, _refresh)
         page.update()
 
-    if not puede_ver:
-        stats = {"total": 0, "en_proceso": 0, "resueltos": 0}
-        reportes = []
-    else:
-        stats = crud_reporte.get_reporte_stats(_tb, brigada_rol_id, _inst_id)
-        reportes = crud_reporte.listar_reportes(_tb, brigada_rol_id, _inst_id)
+    contenedor_dinamico = ft.Container(
+        content=ft.Column(
+            [ft.ProgressRing(color=COLOR_PRIMARIO, stroke_width=3), ft.Container(height=10), ft.Text("Cargando reportes...", color=COLOR_TEXTO_SEC, size=13)],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            alignment=ft.MainAxisAlignment.CENTER,
+        ),
+        expand=True,
+        alignment=ft.Alignment(0, 0)
+    )
 
-    kpis_row = ft.Row(controls=_build_kpi_cards(stats), spacing=16)
-    reports_col = ft.Column(controls=_build_report_list(page, reportes, file_picker, _refresh), spacing=14)
+    async def _cargar_en_background():
+        import asyncio
+        await asyncio.sleep(0.05)
+        if not puede_ver:
+            stats = {"total": 0, "en_proceso": 0, "resueltos": 0}
+            reportes = []
+        else:
+            stats = crud_reporte.get_reporte_stats(_tb, brigada_rol_id, _inst_id)
+            reportes = crud_reporte.listar_reportes(_tb, brigada_rol_id, _inst_id)
+
+        kpis_row = ft.Row(controls=_build_kpi_cards(stats), spacing=16)
+        reports_col = ft.Column(controls=_build_report_list(page, reportes, file_picker, _refresh), spacing=14)
+
+        contenedor_dinamico.content = ft.Column(
+            [
+                kpis_row,
+                ft.Container(height=28),
+                ft.Container(
+                    content=ft.Row(
+                        [
+                            ft.Row(
+                                [
+                                    ft.Icon(ft.Icons.SUBJECT_ROUNDED, color=COLOR_PRIMARIO, size=24),
+                                    ft.Container(width=8),
+                                    ft.Text("Registro Histórico", size=18, weight="bold", color=COLOR_TEXTO),
+                                ],
+                                spacing=0,
+                                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                            ),
+                            ft.Container(expand=True),
+                            ft.Container(
+                                content=ft.Row(
+                                    [
+                                        ft.Icon(ft.Icons.REFRESH_ROUNDED, color=COLOR_PRIMARIO, size=16),
+                                        ft.Container(width=4),
+                                        ft.Text("Actualizar", size=12, weight="w500", color=COLOR_PRIMARIO),
+                                    ],
+                                    spacing=0,
+                                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                                ),
+                                on_click=_refresh,
+                                ink=True,
+                                padding=ft.Padding(12, 8, 12, 8),
+                                border_radius=8,
+                                border=ft.Border.all(1, COLOR_PRIMARIO),
+                            ),
+                        ],
+                    ),
+                    padding=ft.Padding(0, 0, 0, 16),
+                ),
+                reports_col,
+                ft.Container(height=40),
+            ],
+            spacing=0,
+        )
+        page.update()
+
+    page.run_task(_cargar_en_background)
 
     contenido = ft.Column(
         [
@@ -90,43 +149,7 @@ def build(page: ft.Page, **kwargs) -> ft.Control:
                 accion=boton_primario("Nuevo Reporte", ft.Icons.ADD, on_click=on_nuevo_report) if puede_crear_reporte else None,
             ),
             ft.Container(height=28),
-            kpis_row,
-            ft.Container(height=28),
-            ft.Container(
-                content=ft.Row(
-                    [
-                        ft.Row(
-                            [
-                                ft.Icon(ft.Icons.SUBJECT_ROUNDED, color=COLOR_PRIMARIO, size=24),
-                                ft.Container(width=8),
-                                ft.Text("Registro Histórico", size=18, weight="bold", color=COLOR_TEXTO),
-                            ],
-                            spacing=0,
-                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                        ),
-                        ft.Container(expand=True),
-                        ft.Container(
-                            content=ft.Row(
-                                [
-                                    ft.Icon(ft.Icons.REFRESH_ROUNDED, color=COLOR_PRIMARIO, size=16),
-                                    ft.Container(width=4),
-                                    ft.Text("Actualizar", size=12, weight="w500", color=COLOR_PRIMARIO),
-                                ],
-                                spacing=0,
-                                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                            ),
-                            on_click=_refresh,
-                            ink=True,
-                            padding=ft.Padding(12, 8, 12, 8),
-                            border_radius=8,
-                            border=ft.Border.all(1, COLOR_PRIMARIO),
-                        ),
-                    ],
-                ),
-                padding=ft.Padding(0, 0, 0, 16),
-            ),
-            reports_col,
-            ft.Container(height=40),
+            contenedor_dinamico,
         ],
         scroll=ft.ScrollMode.AUTO,
         expand=True,

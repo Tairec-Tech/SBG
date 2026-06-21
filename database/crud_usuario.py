@@ -36,13 +36,20 @@ def verificar_login(email: str, password: str):
     return usuario
 
 
+_esquema_cache_cdce = False
+
 def _asegurar_columna_cdce(cursor):
-    """Verifica y añade la columna cdce si no existe."""
+    """Verifica y añade la columna cdce si no existe. Solo lo hace 1 vez por sesión."""
+    global _esquema_cache_cdce
+    if _esquema_cache_cdce:
+        return
     try:
         cursor.execute("SELECT cdce FROM institucion_educativa LIMIT 1")
         cursor.fetchall()
+        _esquema_cache_cdce = True
     except Exception:
         cursor.execute("ALTER TABLE institucion_educativa ADD COLUMN cdce VARCHAR(100)")
+        _esquema_cache_cdce = True
 
 
 def crear_institucion(nombre: str, direccion: str, telefono: str, cdce: str = None) -> int:

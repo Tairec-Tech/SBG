@@ -40,9 +40,8 @@ def _crear_blob(color: str, top: float, left: float, size: float) -> ft.Containe
         border_radius=6,
         bgcolor=ft.Colors.TRANSPARENT,
         shadow=[
-            ft.BoxShadow(blur_radius=int(15 * escala), spread_radius=int(5 * escala), color=ft.Colors.with_opacity(0.9, color), offset=ft.Offset(0, 0)),
-            ft.BoxShadow(blur_radius=int(30 * escala), spread_radius=int(10 * escala), color=ft.Colors.with_opacity(0.6, color), offset=ft.Offset(0, 0)),
-            ft.BoxShadow(blur_radius=int(42 * escala), spread_radius=int(8 * escala), color=ft.Colors.with_opacity(0.3, color), offset=ft.Offset(0, 0)),
+            ft.BoxShadow(blur_radius=int(20 * escala), spread_radius=int(5 * escala), color=ft.Colors.with_opacity(0.7, color), offset=ft.Offset(0, 0)),
+            ft.BoxShadow(blur_radius=int(35 * escala), spread_radius=int(8 * escala), color=ft.Colors.with_opacity(0.3, color), offset=ft.Offset(0, 0)),
         ],
     )
     return ft.Container(
@@ -422,13 +421,11 @@ def build(page: ft.Page, on_login_success, on_go_register, on_go_recovery) -> ft
         width=460,
     )
 
-    # Blobs de fondo (misma difuminación que los glows: radial centro → transparente)
+    # Blobs de fondo simplificados (3 en lugar de 5)
     background_blobs = [
         _crear_blob(GLOW_AZUL, 50, -50, 300),
-        _crear_blob("#FCD34D", 100, 1100, 250),
         _crear_blob(GLOW_VERDE, 600, 100, 300),
         _crear_blob(GLOW_MORADO, 500, 1150, 250),
-        _crear_blob(GLOW_MORADO, 700, 1100, 280),
     ]
 
     # Tonalidades de verde para las pelotitas (mismo tamaño, todas se mueven en distintas direcciones)
@@ -445,16 +442,12 @@ def build(page: ft.Page, on_login_success, on_go_register, on_go_recovery) -> ft
     ]
     TAMANO_PARTICULA = 14
 
-    # Posiciones y dirección (step_top, step_left) para cada partícula
+    # Posiciones y dirección (step_top, step_left) reducidas a 5 partículas para mejor rendimiento
     config_particulas = [
-        (200, 250, 12, 0),    # arriba/abajo
-        (120, 150, 0, 14),    # izq/der
-        (80, 1100, -10, 8),   # diagonal
-        (150, 1250, 8, -10),
+        (200, 250, 12, 0),
+        (80, 1100, -10, 8),
         (350, 350, -8, -8),
-        (500, 1000, 10, 12),
         (650, 200, -12, 6),
-        (700, 900, 6, -12),
         (600, 1300, -6, 10),
     ]
     particulas_animadas = []
@@ -491,7 +484,8 @@ def build(page: ft.Page, on_login_success, on_go_register, on_go_recovery) -> ft
     )
 
     async def animate_background():
-        while True:
+        # Limitar la animación a 3 ciclos (~6 segundos) para no saturar el CPU
+        for ciclo in range(3):
             try:
                 icon_house.animate_float()
                 icon_people.animate_float()

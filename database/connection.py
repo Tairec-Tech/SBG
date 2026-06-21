@@ -1,9 +1,6 @@
 """
 Conexión a MySQL para el SBE — con connection pool.
-
-Cambios clave vs. versión anterior:
 - Las credenciales se leen LAZY desde get_db_config() al crear el pool.
-- SSL es condicional: solo se activa en modo producción.
 - Todos los errores se registran en sbe_log.txt vía util_log.log().
 """
 import os
@@ -23,7 +20,6 @@ if getattr(sys, "frozen", False):
 else:
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-SSL_CA_PATH = os.path.join(BASE_DIR, "ca.pem")
 
 # Pool global: reutiliza conexiones en vez de abrir/cerrar cada vez
 _pool = None
@@ -35,11 +31,11 @@ def _get_pool():
     if _pool is None:
         cfg = get_db_config()
         log(f"[DB] Creando pool — host={cfg['host']}:{cfg['port']} "
-            f"db={cfg['database']} user={cfg['user']} ssl={cfg['use_ssl']}")
+            f"db={cfg['database']} user={cfg['user']}")
 
         pool_kwargs = dict(
             pool_name="sbe_pool",
-            pool_size=5,
+            pool_size=3,  # Optimizado para computadoras escolares gama baja (Fase 7)
             pool_reset_session=True,
             host=cfg["host"],
             port=cfg["port"],
@@ -47,21 +43,10 @@ def _get_pool():
             password=cfg["password"],
             database=cfg["database"],
             charset="utf8mb4",
-            connection_timeout=10,
+            connection_timeout=5,  # Reducido para fallar rápido si no hay conexión
             use_pure=True,  # Previene errores de extensión C en empaquetado
         )
 
-        # SSL solo para producción (Aiven); local (XAMPP) no lo soporta
-        if cfg["use_ssl"] and os.path.isfile(SSL_CA_PATH):
-            pool_kwargs["ssl_ca"] = SSL_CA_PATH
-            pool_kwargs["ssl_disabled"] = False
-            log(f"[DB] SSL activado con ca.pem: {SSL_CA_PATH}")
-        else:
-            pool_kwargs["ssl_disabled"] = True
-            if cfg["use_ssl"]:
-                log(f"[DB] ADVERTENCIA: SSL solicitado pero ca.pem no encontrado en {SSL_CA_PATH}")
-            else:
-                log("[DB] SSL desactivado (modo local)")
 
         try:
             _pool = MySQLConnectionPool(**pool_kwargs)

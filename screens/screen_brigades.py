@@ -158,11 +158,29 @@ def build(page: ft.Page, content_area=None, **kwargs) -> ft.Control:
         accion=boton_primario("Agregar Brigada", ft.Icons.ADD, on_click=on_nuevo) if puede_crear else None,
     )
 
+    contenedor_dinamico = ft.Container(
+        content=ft.Column(
+            [ft.ProgressRing(color=COLOR_PRIMARIO, stroke_width=3), ft.Container(height=10), ft.Text("Cargando brigadas...", color=COLOR_TEXTO_SEC, size=13)],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            alignment=ft.MainAxisAlignment.CENTER,
+        ),
+        expand=True,
+        alignment=ft.Alignment(0, 0)
+    )
+
+    async def _cargar_en_background():
+        import asyncio
+        await asyncio.sleep(0.05)
+        contenedor_dinamico.content = _build_brigade_cards(page, refresh, usuario)
+        page.update()
+
+    page.run_task(_cargar_en_background)
+
     contenido = ft.Column(
         [
             header,
             ft.Container(height=32),
-            _build_brigade_cards(page, refresh, usuario),
+            contenedor_dinamico,
         ],
         scroll=ft.ScrollMode.AUTO,
         expand=True,

@@ -488,7 +488,7 @@ def _build_con_graficos(page: ft.Page) -> ft.Control:
     _inst_id = ctx.get("institucion_id")
     cfg = _get_config(_tb)
 
-    _ck_prefix = f"_{ctx['modo']}_{ctx.get('institucion_id')}_{ctx.get('brigada_rol_id')}"
+    _ck_prefix = f"stats_{ctx['modo']}_{ctx.get('institucion_id')}_{ctx.get('brigada_rol_id')}"
     ck_kpis = f"{_ck_prefix}_kpis"
     ck_bar  = f"{_ck_prefix}_bar"
     ck_line = f"{_ck_prefix}_line"
@@ -589,6 +589,21 @@ def _build_con_graficos(page: ft.Page) -> ft.Control:
         else:
             leaderboard_container.content = ft.Text("No hay actividades registradas en la institución.", color=COLOR_TEXTO_SEC)
 
+        if page.session:
+            try:
+                kpis_container.update()
+                bar_container.update()
+                line_container.update()
+                pie_chart_container.update()
+                pie_legend_container.update()
+                momento_container.update()
+                origen_chart_container.update()
+                origen_legend_container.update()
+                nivel_container.update()
+                leaderboard_container.update()
+            except Exception:
+                pass
+
     if is_loaded:
         popular_vistas()
     else:
@@ -604,13 +619,20 @@ def _build_con_graficos(page: ft.Page) -> ft.Control:
         nivel_container.content = ft.ProgressRing()
 
     async def _load_data_async():
-        if getattr(page, "data", None) is None: return
-        if page.data.get(loading_key) or page.data.get(loaded_key): return
+        import asyncio
+        await asyncio.sleep(0.2)
+        if getattr(page, "data", None) is None:
+            return
+        if page.data.get(loaded_key):
+            return
+        if page.data.get(loading_key):
+            return
         page.data[loading_key] = True
 
         try:
-            import asyncio
+            lb_data = []
             if ctx["modo"] in ["sin_acceso", "sin_brigada"]:
+                print(f"[STATS DEBUG] Modo sin acceso/brigada, usando zeros")
                 kpis = {"voluntariado_activo": 0, "horas_invertidas": 0, "despliegue_operativo": 0, "impacto_documentado": 0, "tasa_efectividad": 0}
                 act_por_mes = []
                 reportes_tendencia = []
@@ -641,9 +663,12 @@ def _build_con_graficos(page: ft.Page) -> ft.Control:
             
             # Popular la vista con los datos ya cacheados
             popular_vistas()
-            if page.session: page.update()
+            try:
+                page.update()
+            except Exception:
+                pass
             
-            # Solo si todo fue bien marcamos como loaded (sin excepciones)
+            # Solo si todo fue bien marcamos como loaded
             page.data[loaded_key] = True
 
         except Exception as e:

@@ -335,24 +335,17 @@ def build(page: ft.Page, content_area=None, **kwargs) -> ft.Control:
     )
 
     def _refresh(_=None):
-        if content_area:
-            content_area.content = build(page, content_area)
-            page.update()
+        if sin_contexto_operativo:
+            stats = {"total_turnos": 0, "brigadistas_asignados": 0, "dias_con_turnos": 0}
+            kpis_row.controls = _build_kpi_cards(stats)
+            schedule_col.controls = [_empty_operativo()]
         else:
-            if sin_contexto_operativo:
-                stats = {"total_turnos": 0, "brigadistas_asignados": 0, "dias_con_turnos": 0}
-                kpis_row.controls = _build_kpi_cards(stats)
-                schedule_col.controls = [_empty_operativo()]
-            else:
-                stats = crud_turno.get_turno_stats(_tb, brigada_rol_id, _inst_id)
-                kpis_row.controls = _build_kpi_cards(stats)
-                schedule_col.controls = _build_merged_schedule(_tb, brigada_rol_id, _inst_id, user_id, rol, _refresh, _on_editar, _on_eliminar, page)
-            page.update()
+            stats = crud_turno.get_turno_stats(_tb, brigada_rol_id, _inst_id)
+            kpis_row.controls = _build_kpi_cards(stats)
+            schedule_col.controls = _build_merged_schedule(_tb, brigada_rol_id, _inst_id, user_id, rol, _refresh, _on_editar, _on_eliminar, page)
+        page.update()
 
-    if sin_contexto_operativo:
-        stats = {"total_turnos": 0, "brigadistas_asignados": 0, "dias_con_turnos": 0}
-    else:
-        stats = crud_turno.get_turno_stats(_tb, brigada_rol_id, _inst_id)
+    stats = {"total_turnos": 0, "brigadistas_asignados": 0, "dias_con_turnos": 0}
     kpis_row = ft.Row(controls=_build_kpi_cards(stats), spacing=16)
 
     def _on_editar(turno):
@@ -436,10 +429,33 @@ def build(page: ft.Page, content_area=None, **kwargs) -> ft.Control:
             alignment=ft.Alignment(0, 0),
         )
 
-    if sin_contexto_operativo:
-        schedule_col = ft.Column([_empty_operativo()], scroll=ft.ScrollMode.AUTO)
-    else:
-        schedule_col = ft.Column(_build_merged_schedule(_tb, brigada_rol_id, _inst_id, user_id, rol, _refresh, _on_editar, _on_eliminar, page), scroll=ft.ScrollMode.AUTO)
+    schedule_col = ft.Column(
+        [
+            ft.Container(
+                content=ft.Column(
+                    [ft.ProgressRing(color=COLOR_PRIMARIO, stroke_width=3), ft.Container(height=10), ft.Text("Cargando programación...", color=COLOR_TEXTO_SEC, size=13)],
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    alignment=ft.MainAxisAlignment.CENTER,
+                ),
+                padding=40,
+                alignment=ft.Alignment(0, 0)
+            )
+        ],
+        scroll=ft.ScrollMode.AUTO
+    )
+
+    async def _cargar_datos():
+        import asyncio
+        await asyncio.sleep(0.05)
+        if sin_contexto_operativo:
+            schedule_col.controls = [_empty_operativo()]
+        else:
+            stats = crud_turno.get_turno_stats(_tb, brigada_rol_id, _inst_id)
+            kpis_row.controls = _build_kpi_cards(stats)
+            schedule_col.controls = _build_merged_schedule(_tb, brigada_rol_id, _inst_id, user_id, rol, _refresh, _on_editar, _on_eliminar, page)
+        page.update()
+
+    page.run_task(_cargar_datos)
 
     contenido = ft.Column(
         [

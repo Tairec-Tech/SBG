@@ -125,11 +125,7 @@ def _build_estado_restringido(ctx):
 
 
 def _build_filtros_y_lista(page, refresh_callback=None):
-    """Barra de filtros + lista en 2 secciones (Profesores / Alumnos) o una sola si hay filtro activo."""
-    try:
-        lista = listar_brigadistas_visibles_only()
-    except Exception:
-        lista = []
+    lista = []
 
     # Controles de filtro (se actualizan al cambiar)
     filtro_nombre = ft.TextField(
@@ -181,28 +177,10 @@ def _build_filtros_y_lista(page, refresh_callback=None):
         on_select=lambda e: _aplicar_filtro(),
     )
 
-    opciones_brigada = [ft.dropdown.Option("", "Todas las brigadas")]
-    brigadas_vistas = set()
-    incluir_sin_brigada = False
-    for u in lista:
-        brigada_id = u.get("Brigada_idBrigada")
-        brigada_nombre = (u.get("nombre_brigada") or "").strip()
-        if brigada_id:
-            key = str(brigada_id)
-            if key not in brigadas_vistas:
-                brigadas_vistas.add(key)
-                opciones_brigada.append(
-                    ft.dropdown.Option(key, brigada_nombre or f"Brigada {brigada_id}")
-                )
-        else:
-            incluir_sin_brigada = True
-    if incluir_sin_brigada:
-        opciones_brigada.append(ft.dropdown.Option("__sin_brigada__", "Sin brigada"))
-
     filtro_brigada = ft.Dropdown(
         hint_text="Brigada",
         width=190,
-        options=opciones_brigada,
+        options=[ft.dropdown.Option("", "Todas las brigadas")],
         border_color=COLOR_BORDE,
         focused_border_color=COLOR_PRIMARIO,
         text_size=14,
@@ -211,7 +189,55 @@ def _build_filtros_y_lista(page, refresh_callback=None):
         on_select=lambda e: _aplicar_filtro(),
     )
 
-    contenedor_lista = ft.Container()
+    contenedor_lista = ft.Container(
+        content=ft.Column(
+            [ft.ProgressRing(color=COLOR_PRIMARIO, stroke_width=3), ft.Container(height=10), ft.Text("Cargando lista de brigadistas...", color=COLOR_TEXTO_SEC, size=13)],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            alignment=ft.MainAxisAlignment.CENTER,
+        ),
+        expand=True,
+        alignment=ft.Alignment(0, 0)
+    )
+
+    async def _cargar_datos():
+        import asyncio
+        await asyncio.sleep(0.05)
+        nonlocal lista
+        try:
+            lista = listar_brigadistas_visibles_only()
+        except Exception:
+            lista = []
+            
+        opciones_brigada = [ft.dropdown.Option("", "Todas las brigadas")]
+        brigadas_vistas = set()
+        incluir_sin_brigada = False
+        for u in lista:
+            brigada_id = u.get("Brigada_idBrigada")
+            brigada_nombre = (u.get("nombre_brigada") or "").strip()
+            if brigada_id:
+                key = str(brigada_id)
+                if key not in brigadas_vistas:
+                    brigadas_vistas.add(key)
+                    opciones_brigada.append(
+                        ft.dropdown.Option(key, brigada_nombre or f"Brigada {brigada_id}")
+                    )
+            else:
+                incluir_sin_brigada = True
+        if incluir_sin_brigada:
+            opciones_brigada.append(ft.dropdown.Option("__sin_brigada__", "Sin brigada"))
+        
+        filtro_brigada.options = opciones_brigada
+        
+        # Lista inicial: dos secciones
+        profesores = [u for u in lista if u.get("rol") == "Profesor"]
+        alumnos = [u for u in lista if u.get("rol") in ("Brigadista Jefe", "Subjefe", "Brigadista", "Estudiante")]
+        contenedor_lista.content = _build_lista_interna(
+            page, lista, False, refresh_callback, profesores=profesores, alumnos=alumnos
+        )
+        page.update()
+
+    page.run_task(_cargar_datos)
+
 
     def _aplicar_filtro():
         nom = filtro_nombre.value or ""
@@ -241,12 +267,7 @@ def _build_filtros_y_lista(page, refresh_callback=None):
         filtro_brigada.value = ""
         _aplicar_filtro()
 
-    # Lista inicial: dos secciones
-    profesores = [u for u in lista if u.get("rol") == "Profesor"]
-    alumnos = [u for u in lista if u.get("rol") in ("Brigadista Jefe", "Subjefe", "Brigadista", "Estudiante")]
-    contenedor_lista.content = _build_lista_interna(
-        page, lista, False, refresh_callback, profesores=profesores, alumnos=alumnos
-    )
+    # La lista inicial ahora se carga en _cargar_datos
 
     # Bloque de filtros: compacto, sin expandir (evita cuadro gris gigante)
     fila_filtros = ft.Row(

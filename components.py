@@ -23,6 +23,23 @@ from theme import (
 )
 
 
+
+def _update_active_item(sidebar_container, sel):
+    try:
+        menu_scrollable = sidebar_container.content.controls[1]
+        for c in menu_scrollable.controls:
+            if hasattr(c, "data") and c.data:
+                activo = sel == c.data
+                c.bgcolor = COLOR_SIDEBAR_ACTIVO if activo else "transparent"
+                c.border = ft.Border(left=ft.BorderSide(3, COLOR_PRIMARIO_CLARO)) if activo else None
+                color_txt = COLOR_SIDEBAR_TEXTO if activo else COLOR_SIDEBAR_TEXTO_SEC
+                if isinstance(c.content, ft.Row):
+                    c.content.controls[0].color = color_txt
+                    c.content.controls[2].color = color_txt
+                    c.content.controls[2].weight = "w500" if activo else "w400"
+    except Exception:
+        pass
+
 async def build_sidebar(page: ft.Page, contenido_area: ft.Container, vista_actual: list, on_logout, on_nav_change=None, on_go_register=None, on_go_recovery=None):
     """
     Barra lateral verde oscuro: logo, navegación (con subrayado del activo), Modo día/noche compacto, Usuario, Cerrar sesión.
@@ -219,13 +236,20 @@ async def build_sidebar(page: ft.Page, contenido_area: ft.Container, vista_actua
         if logo_ruta:
             import os
             if os.path.exists(logo_ruta):
-                import base64
-                try:
-                    with open(logo_ruta, "rb") as f:
-                        b64_logo = base64.b64encode(f.read()).decode("utf-8")
+                if hasattr(page, "_logo_cache") and logo_ruta in page._logo_cache:
+                    b64_logo = page._logo_cache[logo_ruta]
                     logo_control = ft.Image(src=f"data:image/png;base64,{b64_logo}", width=32, height=32, fit="contain")
-                except Exception:
-                    pass
+                else:
+                    import base64
+                    try:
+                        with open(logo_ruta, "rb") as f:
+                            b64_logo = base64.b64encode(f.read()).decode("utf-8")
+                        if not hasattr(page, "_logo_cache"):
+                            page._logo_cache = {}
+                        page._logo_cache[logo_ruta] = b64_logo
+                        logo_control = ft.Image(src=f"data:image/png;base64,{b64_logo}", width=32, height=32, fit="contain")
+                    except Exception:
+                        pass
 
     header_section = ft.Column(
         [

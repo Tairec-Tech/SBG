@@ -4,9 +4,15 @@ Extrae KPIs globales y métricas temporales/agrupadas para gráficos.
 Filtrado por tipo_brigada para aislamiento de datos.
 """
 from database.connection import ejecutar
+from database.cache import kpi_cache
 
 def get_kpis_estadisticas(tipo_brigada=None, brigada_rol_id=None, institucion_id=None):
     """Calcula 5 KPIs de alto impacto, filtrados por institucion_id, brigada_rol_id o tipo_brigada."""
+    cache_key = f"kpis_{tipo_brigada}_{brigada_rol_id}_{institucion_id}"
+    cached = kpi_cache.get(cache_key)
+    if cached:
+        return cached
+
     kpis = {
         "voluntariado_activo": 0,
         "horas_invertidas": 0,
@@ -77,6 +83,7 @@ def get_kpis_estadisticas(tipo_brigada=None, brigada_rol_id=None, institucion_id
     except Exception as e:
         print(f"Error calculando KPIs de estadísticas: {e}")
 
+    kpi_cache.set(cache_key, kpis)
     return kpis
 
 

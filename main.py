@@ -61,7 +61,7 @@ async def main(page: ft.Page):
     page.padding = 0
     page.window.maximized = True
     # Registrar fuente elegante para la selección de brigadas
-    page.fonts = {"Outfit": "https://raw.githubusercontent.com/nicholasmireles/fonts/main/ofl/outfit/Outfit%5Bwght%5D.ttf"}
+    # page.fonts = {"Outfit": "https://raw.githubusercontent.com/nicholasmireles/fonts/main/ofl/outfit/Outfit%5Bwght%5D.ttf"}
     page.update()
 
     # ----- Animación de entrada: bloques SBE (tonos neutros) -----
@@ -221,25 +221,20 @@ async def main(page: ft.Page):
 
         transition_overlay.visible = True
         transition_overlay.opacity = 1
+        icon_success_container.scale = 0
         page.update()
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.3)
 
         icon_success_container.scale = 1
         text_welcome.opacity = 1
         page.update()
-        await asyncio.sleep(1.2)
+        await asyncio.sleep(1.0)
 
         contenedor_principal.content = vista_principal
-        page.update()
-
-        icon_success_container.scale = 0
-        text_welcome.opacity = 0
-        page.update()
-        await asyncio.sleep(0.2)
-
         transition_overlay.opacity = 0
         page.update()
         await asyncio.sleep(0.5)
+        
         transition_overlay.visible = False
         page.update()
 
@@ -254,6 +249,7 @@ async def main(page: ft.Page):
             for k in claves_a_eliminar:
                 page.data.pop(k, None)
         aplicar_paleta_neutra(page)
+        sidebar_container.content = None
         contenedor_principal.content = build_login_view()
         page.update()
 
@@ -329,15 +325,21 @@ async def main(page: ft.Page):
     vista_principal.content = ft.Row([sidebar_container, content_area], expand=True, vertical_alignment=ft.CrossAxisAlignment.STRETCH)
 
     async def refresh_sidebar():
-        log("refresh_sidebar: construyendo sidebar...")
+        log("refresh_sidebar: actualizando sidebar...")
         try:
-            sidebar_container.content = await build_sidebar(
-                page, content_area, vista_actual,
-                on_logout=lambda: page.run_task(cerrar_sesion),
-                on_nav_change=lambda: page.run_task(refresh_sidebar),
-            )
-            page.update()
-            log("refresh_sidebar: listo")
+            if sidebar_container.content:
+                from components import _update_active_item
+                _update_active_item(sidebar_container.content, vista_actual[0])
+                page.update()
+                log("refresh_sidebar: item activo actualizado")
+            else:
+                sidebar_container.content = await build_sidebar(
+                    page, content_area, vista_actual,
+                    on_logout=lambda: page.run_task(cerrar_sesion),
+                    on_nav_change=lambda: page.run_task(refresh_sidebar),
+                )
+                page.update()
+                log("refresh_sidebar: construido completo")
         except Exception as e:
             log(f"refresh_sidebar ERROR: {e}")
             page.update()
@@ -361,16 +363,16 @@ async def main(page: ft.Page):
     )
 
     async def animacion_inicio_automatica():
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.3)
         ensamblar_bloques()
         page.update()
-        await asyncio.sleep(1.3)
+        await asyncio.sleep(0.8)
         texto_subtitulo_intro_container.opacity = 1
         page.update()
-        await asyncio.sleep(1.2)
+        await asyncio.sleep(0.6)
         intro_overlay.opacity = 0
         page.update()
-        await asyncio.sleep(0.55)
+        await asyncio.sleep(0.3)
         intro_overlay.visible = False
         page.update()
 
