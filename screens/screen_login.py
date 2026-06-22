@@ -215,13 +215,25 @@ def build(page: ft.Page, on_login_success, on_go_register, on_go_recovery) -> ft
     )
 
     # Diálogo de error para login (modal, siempre visible)
-    texto_error_login = ft.Text("", size=14)
+    # Forzamos colores claros porque el login siempre tiene apariencia clara
+    texto_error_login = ft.Text("", size=14, color="#1e293b")
     dialogo_error_login = ft.AlertDialog(
         modal=True,
-        title=ft.Row([ft.Icon(ft.Icons.ERROR_OUTLINE, color="#ef4444"), ft.Text("Error")]),
+        bgcolor="#ffffff",
+        title=ft.Row([
+            ft.Icon(ft.Icons.ERROR_OUTLINE, color="#ef4444"),
+            ft.Text("Error", color="#1e293b", weight="bold"),
+        ]),
         content=texto_error_login,
-        actions=[ft.TextButton("Entendido", on_click=lambda e: _cerrar_error_login())],
+        actions=[
+            ft.TextButton(
+                "Entendido",
+                on_click=lambda e: _cerrar_error_login(),
+                style=ft.ButtonStyle(color=COLOR_PRIMARIO),
+            )
+        ],
         actions_alignment=ft.MainAxisAlignment.END,
+        shape=ft.RoundedRectangleBorder(radius=16),
     )
 
     def _cerrar_error_login():
